@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+{% block head %}
+<style>
+body { background:#f5f7ff !important; }
+.page { padding:0 !important; max-width:100% !important; }
+.da-shell { display:flex; min-height:calc(100vh - 70px); }
+
+/* Sidebar */
+.cd-sidebar {
+  width:190px; flex-shrink:0; background:#fff;
+  border-right:1px solid #e2e5f0; padding:16px 0;
+  position:sticky; top:70px; height:calc(100vh - 70px); overflow-y:auto;
+}
+.cd-sidebar .nav-item {
+  display:flex; align-items:center; gap:9px;
+  padding:9px 18px; font-size:0.82rem; font-weight:500;
+  color:#6b7280; cursor:pointer; text-decoration:none;
+  transition:all 0.15s; border-left:3px solid transparent;
+}
+.cd-sidebar .nav-item:hover { background:#f0f2ff; color:#4f46e5; }
+.cd-sidebar .nav-item.active { background:#eef2ff; color:#4f46e5; font-weight:700; border-left-color:#4f46e5; }
+.cd-sidebar .nav-item i { width:16px; text-align:center; }
+.cd-sidebar { display:flex; flex-direction:column; }
+.cd-sidebar .sidebar-bottom { padding:12px 0; border-top:1px solid #e2e5f0; margin-top:auto; }
+
+/* Main */
+.da-main { flex:1; padding:20px 24px; overflow-y:auto; }
+
+/* Table */
+.da-tbl { width:100%; border-collapse:collapse; font-size:0.8rem; }
+.da-tbl th { background:#f8f9ff; color:#9ca3af; font-size:0.65rem; font-weight:700; letter-spacing:0.7px; text-transform:uppercase; padding:8px 10px; border-bottom:1px solid #e2e5f0; text-align:left; }
+.da-tbl td { padding:9px 10px; border-bottom:1px solid #f3f4f6; vertical-align:middle; }
+.da-tbl tbody tr:last-child td { border-bottom:none; }
+.da-tbl tbody tr:hover { background:#fafbff; }
+
+/* Status badges */
+.asb { display:inline-flex; align-items:center; padding:4px 12px; border-radius:20px; font-size:0.72rem; font-weight:700; }
+.asb-applied   { background:#eef2ff; color:#4f46e5; }
+.asb-eligible  { background:#ede9fe; color:#7c3aed; }
+.asb-test      { background:#fef3c7; color:#d97706; }
+.asb-interview { background:#fce7f3; color:#be185d; }
+.asb-selected  { background:#d1fae5; color:#059669; }
+.asb-rejected  { background:#fee2e2; color:#dc2626; }
+
+/* Match badge */
+.match-pct { font-size:0.8rem; font-weight:700; padding:3px 10px; border-radius:20px; }
+.match-high { background:#d1fae5; color:#059669; }
+.match-mid  { background:#fef3c7; color:#d97706; }
+.match-low  { background:#fee2e2; color:#dc2626; }
+
+/* Search */
+.search-wrap { position:relative; }
+.search-wrap i { position:absolute; left:11px; top:50%; transform:translateY(-50%); color:#9ca3af; font-size:0.82rem; }
+.search-wrap input { padding:8px 12px 8px 32px; border:1.5px solid #e2e5f0; border-radius:9px; font-size:0.85rem; font-family:'Inter',sans-serif; outline:none; color:#111827; background:#fff; width:220px; }
+.search-wrap input:focus { border-color:#4f46e5; }
+</style>
+{% endblock %}
+
+{% block nav %}
+  <a href="/company" style="color:var(--muted);text-decoration:none;padding:7px 14px;border-radius:8px;font-size:0.875rem;font-weight:500;">Dashboard</a>
+  <a href="/company?section=drives" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus"></i> Post Drive</a>
+  <a href="/logout" class="btn-nav"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+{% endblock %}
+
+{% block content %}
+<div class="da-shell">
+
+  <!-- Sidebar -->
+  <nav class="cd-sidebar">
+    <a class="nav-item" href="/company"><i class="fa-solid fa-house"></i> Dashboard</a>
+    <a class="nav-item" href="/company?section=drives"><i class="fa-solid fa-briefcase"></i> Drives</a>
+    <a class="nav-item active" href="#"><i class="fa-solid fa-users"></i> Applicants</a>
+    <a class="nav-item" href="/company?section=profiles"><i class="fa-solid fa-id-card"></i> Profiles</a>
+    <div class="sidebar-bottom">
+      <a class="nav-item" href="/logout"><i class="fa-solid fa-gear"></i> Settings</a>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <div class="da-main">
+
+    <!-- Breadcrumb -->
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;font-size:0.82rem;">
+      <a href="/company?section=drives" style="color:#6b7280;text-decoration:none;display:flex;align-items:center;gap:5px;">
+        <i class="fa-solid fa-arrow-left"></i>
+      </a>
+      <a href="/company?section=drives" style="color:#6b7280;text-decoration:none;">Drives</a>
+      <i class="fa-solid fa-chevron-right" style="font-size:0.65rem;color:#9ca3af;"></i>
+      <span style="color:#4f46e5;font-weight:600;">Applicants — {{ drive['title'] }}</span>
+    </div>
+
+    <h1 style="font-size:1.1rem;font-weight:800;color:#111827;margin-bottom:16px;">Applicants — {{ drive['title'] }}</h1>
+
+    <!-- Search + filter + export bar -->
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
+      <div class="search-wrap">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="app-search" placeholder="Search applicants…" oninput="filterApps()">
+      </div>
+      <select id="app-status-filter" onchange="filterApps()" style="padding:8px 12px;border:1.5px solid #e2e5f0;border-radius:9px;font-size:0.85rem;font-family:'Inter',sans-serif;outline:none;color:#374151;background:#fff;">
+        <option value="">All Status</option>
+        <option value="applied">Applied</option>
+        <option value="eligible">Eligible</option>
+        <option value="test">Test</option>
+        <option value="interview">Interview</option>
+        <option value="selected">Selected</option>
+        <option value="rejected">Rejected</option>
+      </select>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+        <div style="display:flex;align-items:center;gap:6px;font-size:0.8rem;color:#6b7280;cursor:pointer;">
+          <i class="fa-solid fa-sliders"></i> Filters
+        </div>
+        <button onclick="exportCSV()" style="display:flex;align-items:center;gap:6px;padding:7px 14px;border:1.5px solid #e2e5f0;border-radius:9px;background:#fff;font-size:0.8rem;font-weight:600;color:#374151;cursor:pointer;font-family:'Inter',sans-serif;">
+          <i class="fa-solid fa-download"></i> Export
+        </button>
+      </div>
+    </div>
+
+    <!-- Applicants table -->
+    {% if apps %}
+    <div style="background:#fff;border:1px solid #e2e5f0;border-radius:14px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.05);">
+      <table class="da-tbl" id="apps-table">
+        <thead>
+          <tr>
+            <th>Applicant</th>
+            <th>CGPA</th>
+            <th>AI Match</th>
+            <th>Applied On</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% set logo_colors = ['#4285f4','#ea4335','#fbbc05','#34a853','#ff6900','#0078d4','#7c3aed','#0891b2','#e11d48','#059669'] %}
+          {% for a in apps %}
+          <tr class="app-row" data-name="{{ a['sname']|lower }}" data-email="{{ a['semail']|lower }}" data-status="{{ a['status'] }}">
+            <td>
+              <div style="display:flex;align-items:center;gap:12px;">
+                <div style="width:36px;height:36px;border-radius:50%;background:{{ logo_colors[loop.index0 % logo_colors|length] }};display:flex;align-items:center;justify-content:center;font-size:0.9rem;font-weight:700;color:#fff;flex-shrink:0;">
+                  {{ a['sname'][0].upper() }}
+                </div>
+                <div>
+                  <div style="font-weight:600;color:#111827;font-size:0.875rem;">{{ a['sname'] }}</div>
+                  <div style="font-size:0.75rem;color:#9ca3af;">{{ a['semail'] }}</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <span style="font-weight:700;color:{% if a['cgpa'] >= drive['req_cgpa'] %}#059669{% else %}#dc2626{% endif %};">
+                {{ a['cgpa'] }}
+              </span>
+            </td>
+            <td>
+              {% set sc = a['ai_score'] %}
+              <span class="match-pct {% if sc >= 70 %}match-high{% elif sc >= 45 %}match-mid{% else %}match-low{% endif %}">
+                {{ sc }}%
+              </span>
+            </td>
+            <td style="color:#6b7280;font-size:0.82rem;">{{ a['applied_on'][:10] }}</td>
+            <td>
+              {% set s = a['status'] %}
+              <span class="asb asb-{{ s }}">
+                {% if s=='applied' %}Applied
+                {% elif s=='eligible' %}Shortlisted
+                {% elif s=='test' %}Test Scheduled
+                {% elif s=='interview' %}Interview
+                {% elif s=='selected' %}Selected
+                {% else %}Rejected{% endif %}
+              </span>
+            </td>
+            <td>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <form action="/app/{{ a['id'] }}/status" method="POST" style="display:flex;gap:5px;align-items:center;">
+                  <select name="status" style="padding:5px 8px;border:1.5px solid #e2e5f0;border-radius:8px;font-size:0.78rem;font-family:'Inter',sans-serif;outline:none;color:#374151;background:#fff;cursor:pointer;" onchange="this.form.submit()">
+                    <option value="applied"   {% if a['status']=='applied'   %}selected{% endif %}>Applied</option>
+                    <option value="eligible"  {% if a['status']=='eligible'  %}selected{% endif %}>Shortlisted</option>
+                    <option value="test"      {% if a['status']=='test'      %}selected{% endif %}>Test</option>
+                    <option value="interview" {% if a['status']=='interview' %}selected{% endif %}>Interview</option>
+                    <option value="selected"  {% if a['status']=='selected'  %}selected{% endif %}>Selected</option>
+                    <option value="rejected"  {% if a['status']=='rejected'  %}selected{% endif %}>Rejected</option>
+                  </select>
+                </form>
+                <div style="width:28px;height:28px;border-radius:7px;background:#f8f9ff;border:1px solid #e2e5f0;display:flex;align-items:center;justify-content:center;cursor:pointer;" title="{{ a['sname'] }}'s skills: {{ a['skills'] }}">
+                  <i class="fa-solid fa-ellipsis-vertical" style="font-size:0.75rem;color:#6b7280;"></i>
+                </div>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination info -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:16px;font-size:0.8rem;color:#6b7280;">
+      <span>Showing {{ apps|length }} applicant{{ 's' if apps|length != 1 else '' }}</span>
+      <div style="display:flex;align-items:center;gap:4px;">
+        <span style="width:28px;height:28px;border-radius:6px;background:#4f46e5;color:#fff;display:flex;align-items:center;justify-content:center;font-size:0.78rem;font-weight:700;">1</span>
+      </div>
+    </div>
+
+    {% else %}
+    <div style="background:#fff;border:1px solid #e2e5f0;border-radius:14px;text-align:center;padding:56px;color:#9ca3af;">
+      <i class="fa-solid fa-users" style="font-size:2.5rem;opacity:0.3;display:block;margin-bottom:12px;"></i>
+      <p style="font-size:0.9rem;">No applications yet for this drive.</p>
+    </div>
+    {% endif %}
+
+  </div><!-- end da-main -->
+</div><!-- end da-shell -->
+
+<script>
+function filterApps() {
+  const q = document.getElementById('app-search').value.toLowerCase();
+  const st = document.getElementById('app-status-filter').value;
+  document.querySelectorAll('.app-row').forEach(r => {
+    const nameMatch = !q || r.dataset.name.includes(q) || r.dataset.email.includes(q);
+    const statusMatch = !st || r.dataset.status === st;
+    r.style.display = (nameMatch && statusMatch) ? '' : 'none';
+  });
+}
+
+function exportCSV() {
+  const rows = [['Name','Email','CGPA','AI Match','Applied On','Status']];
+  document.querySelectorAll('.app-row').forEach(r => {
+    const cells = r.querySelectorAll('td');
+    const name = cells[0].querySelector('div > div:first-child')?.textContent?.trim() || '';
+    const email = cells[0].querySelector('div > div:last-child')?.textContent?.trim() || '';
+    const cgpa = cells[1].textContent.trim();
+    const match = cells[2].textContent.trim();
+    const date = cells[3].textContent.trim();
+    const status = cells[4].textContent.trim();
+    rows.push([name, email, cgpa, match, date, status]);
+  });
+  const csv = rows.map(r => r.map(c => '"'+c+'"').join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'applicants.csv';
+  a.click();
+}
+</script>
+{% endblock %}

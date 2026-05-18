@@ -1,0 +1,397 @@
+{% extends "base.html" %}
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+body{background:#f5f7ff!important}
+.page{padding:0!important;max-width:100%!important}
+.cd-wrap{display:flex;min-height:calc(100vh - 70px)}
+
+/* ── Sidebar ── */
+.cd-side{width:190px;flex-shrink:0;background:#fff;border-right:1px solid #e2e5f0;
+  padding:16px 0;position:sticky;top:70px;height:calc(100vh - 70px);
+  overflow-y:auto;display:flex;flex-direction:column}
+.cd-side a{display:flex;align-items:center;gap:9px;padding:9px 18px;
+  font-size:0.82rem;font-weight:500;color:#6b7280;text-decoration:none;
+  border-left:3px solid transparent;transition:all .15s}
+.cd-side a:hover{background:#f0f2ff;color:#4f46e5}
+.cd-side a.on{background:#eef2ff;color:#4f46e5;font-weight:700;border-left-color:#4f46e5}
+.cd-side a i{width:16px;text-align:center;font-size:0.85rem}
+.cd-side .bot{margin-top:auto;border-top:1px solid #e2e5f0;padding-top:8px}
+
+/* ── Main ── */
+.cd-main{flex:1;padding:20px 24px;overflow-y:auto;min-width:0}
+.cd-sec{display:none}.cd-sec.on{display:block}
+
+/* ── Stat row ── */
+.st-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px}
+.st-card{background:#fff;border:1px solid #e2e5f0;border-radius:10px;
+  padding:12px 14px;display:flex;align-items:center;gap:10px;
+  box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.st-ic{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;
+  justify-content:center;font-size:0.95rem;flex-shrink:0}
+.st-v{font-size:1.2rem;font-weight:800;color:#111827;line-height:1}
+.st-l{font-size:0.68rem;color:#6b7280;font-weight:500;margin-top:2px}
+
+/* ── Panel ── */
+.pnl{background:#fff;border:1px solid #e2e5f0;border-radius:10px;
+  padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.pnl-t{font-size:0.82rem;font-weight:700;color:#111827;margin-bottom:10px}
+
+/* ── Table ── */
+.ct{width:100%;border-collapse:collapse;font-size:0.8rem}
+.ct th{background:#f8f9ff;color:#9ca3af;font-size:0.65rem;font-weight:700;
+  letter-spacing:.7px;text-transform:uppercase;padding:8px 10px;
+  border-bottom:1px solid #e2e5f0;text-align:left}
+.ct td{padding:9px 10px;border-bottom:1px solid #f3f4f6;vertical-align:middle;color:#374151}
+.ct tbody tr:last-child td{border-bottom:none}
+.ct tbody tr:hover{background:#fafbff}
+
+/* ── Badges ── */
+.sb{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:0.68rem;font-weight:700}
+.sb-active{background:#d1fae5;color:#059669}
+.sb-closed{background:#f3f4f6;color:#6b7280}
+
+/* ── Search ── */
+.srch{position:relative}
+.srch i{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:#9ca3af;font-size:0.75rem}
+.srch input{padding:7px 10px 7px 28px;border:1.5px solid #e2e5f0;border-radius:8px;
+  font-size:0.8rem;font-family:'Inter',sans-serif;outline:none;color:#111827;background:#fff;width:200px}
+.srch input:focus{border-color:#4f46e5}
+
+/* ── Co avatar ── */
+.cav{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;
+  justify-content:center;font-size:0.8rem;font-weight:800;color:#fff;flex-shrink:0}
+</style>
+{% endblock %}
+
+{% block nav %}
+  <a href="#" onclick="cs('dashboard')" style="color:var(--muted);text-decoration:none;padding:6px 12px;border-radius:7px;font-size:0.82rem;font-weight:500;">Dashboard</a>
+  <a href="#" onclick="cs('create-drive')" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus"></i> Post Drive</a>
+  <a href="/logout" class="btn-nav"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+{% endblock %}
+
+{% block content %}
+<div class="cd-wrap">
+
+  <!-- Sidebar -->
+  <nav class="cd-side">
+    <a class="on" id="n-dashboard" onclick="cs('dashboard')"><i class="fa-solid fa-house"></i> Dashboard</a>
+    <a id="n-drives"     onclick="cs('drives')"><i class="fa-solid fa-briefcase"></i> Drives</a>
+    <a id="n-applicants" onclick="cs('applicants')"><i class="fa-solid fa-users"></i> Applicants</a>
+    <a id="n-profiles"   onclick="cs('profiles')"><i class="fa-solid fa-id-card"></i> Profiles</a>
+    <div class="bot">
+      <a href="/logout"><i class="fa-solid fa-gear"></i> Settings</a>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <div class="cd-main">
+
+    <!-- ══ DASHBOARD ══ -->
+    <div class="cd-sec on" id="sec-dashboard">
+
+      <!-- Header -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#4f46e5,#7c3aed);display:flex;align-items:center;justify-content:center;font-size:1rem;font-weight:800;color:#fff;">{{ company['name'][0].upper() }}</div>
+          <div>
+            <div style="font-size:1rem;font-weight:800;color:#111827;">{{ company['name'] }}</div>
+            <div style="font-size:0.72rem;color:#6b7280;">{{ company['industry'] }} · {{ company['location'] }}</div>
+          </div>
+        </div>
+        <div style="background:#fff;border:1px solid #e2e5f0;border-radius:7px;padding:5px 10px;font-size:0.72rem;color:#374151;">
+          <i class="fa-solid fa-calendar" style="color:#9ca3af;margin-right:4px;"></i>All Time
+        </div>
+      </div>
+
+      <!-- 5 stat cards -->
+      <div class="st-row">
+        <div class="st-card"><div class="st-ic" style="background:#dbeafe;color:#2563eb;"><i class="fa-solid fa-briefcase"></i></div><div><div class="st-v">{{ stats.drives }}</div><div class="st-l">Active Drives</div></div></div>
+        <div class="st-card"><div class="st-ic" style="background:#ede9fe;color:#7c3aed;"><i class="fa-solid fa-users"></i></div><div><div class="st-v">{{ stats.apps }}</div><div class="st-l">Total Applicants</div></div></div>
+        <div class="st-card"><div class="st-ic" style="background:#d1fae5;color:#059669;"><i class="fa-solid fa-paper-plane"></i></div><div><div class="st-v">{{ stats.selected }}</div><div class="st-l">Shortlisted</div></div></div>
+        <div class="st-card"><div class="st-ic" style="background:#fce7f3;color:#be185d;"><i class="fa-solid fa-user-tie"></i></div><div><div class="st-v">{{ stats.interviews }}</div><div class="st-l">Interviews</div></div></div>
+        <div class="st-card"><div class="st-ic" style="background:#fef3c7;color:#d97706;"><i class="fa-solid fa-star"></i></div><div><div class="st-v">{{ stats.offers }}</div><div class="st-l">Offers Made</div></div></div>
+      </div>
+
+      <!-- Charts row -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+
+        <!-- Line chart -->
+        <div class="pnl">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <div class="pnl-t" style="margin-bottom:0;">Applicants Overview</div>
+            <div style="display:flex;gap:10px;font-size:0.7rem;">
+              <span style="display:flex;align-items:center;gap:4px;color:#4f46e5;"><span style="width:14px;height:2px;background:#4f46e5;display:inline-block;border-radius:2px;"></span>Applications</span>
+              <span style="display:flex;align-items:center;gap:4px;color:#059669;"><span style="width:14px;height:2px;background:#059669;display:inline-block;border-radius:2px;"></span>Shortlisted</span>
+            </div>
+          </div>
+          {% if timeline_labels %}
+          <div style="height:140px;position:relative;">
+            <canvas id="lineChart"></canvas>
+          </div>
+          {% else %}
+          <div style="text-align:center;padding:30px 0;color:#9ca3af;font-size:0.78rem;">No application data yet.</div>
+          {% endif %}
+        </div>
+
+        <!-- Donut chart -->
+        <div class="pnl">
+          <div class="pnl-t">Applicants by Status</div>
+          {% set total_s = status_counts.values()|sum %}
+          {% if total_s > 0 %}
+          <div style="display:flex;align-items:center;gap:16px;">
+            <div style="height:130px;width:130px;position:relative;flex-shrink:0;">
+              <canvas id="donutChart"></canvas>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:5px;flex:1;">
+              {% for key,color,label in [('applied','#4f46e5','Applied'),('eligible','#7c3aed','Shortlisted'),('interview','#ec4899','Interview'),('selected','#10b981','Offered'),('rejected','#ef4444','Rejected')] %}
+              {% if status_counts[key] > 0 %}
+              <div style="display:flex;align-items:center;justify-content:space-between;font-size:0.72rem;">
+                <div style="display:flex;align-items:center;gap:5px;">
+                  <span style="width:8px;height:8px;border-radius:50%;background:{{ color }};display:inline-block;"></span>
+                  <span style="color:#374151;">{{ label }}</span>
+                </div>
+                <span style="font-weight:700;color:#111827;">{{ ((status_counts[key]/total_s)*100)|round|int }}%</span>
+              </div>
+              {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+          {% else %}
+          <div style="text-align:center;padding:30px 0;color:#9ca3af;font-size:0.78rem;">No applications yet.</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Recent Drives -->
+      <div class="pnl">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div class="pnl-t" style="margin-bottom:0;">Recent Drives</div>
+          <a href="#" onclick="cs('drives')" style="font-size:0.72rem;color:#4f46e5;font-weight:600;text-decoration:none;">View All →</a>
+        </div>
+        {% if drives %}
+        <table class="ct">
+          <thead><tr><th>Drive Title</th><th>Role</th><th>Applications</th><th>Shortlisted</th><th>Interviews</th><th>Status</th></tr></thead>
+          <tbody>
+            {% for d in drives[:5] %}
+            <tr>
+              <td><strong style="color:#111827;">{{ d['title'] }}</strong></td>
+              <td>{{ d['role'] }}</td>
+              <td><strong>{{ d['app_count'] or 0 }}</strong></td>
+              <td><strong>{{ d['eligible_count'] or 0 }}</strong></td>
+              <td><strong>{{ d['interview_count'] or 0 }}</strong></td>
+              <td><span class="sb sb-{{ d['status'] }}">{{ d['status']|capitalize }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div style="text-align:center;padding:24px;color:#9ca3af;font-size:0.82rem;">
+          No drives yet. <a href="#" onclick="cs('create-drive')" style="color:#4f46e5;font-weight:600;">Post your first drive →</a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- ══ DRIVES ══ -->
+    <div class="cd-sec" id="sec-drives">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div style="font-size:1rem;font-weight:800;color:#111827;">Drives</div>
+        <button onclick="cs('create-drive')" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus"></i> Post New Drive</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        <div class="srch"><i class="fa-solid fa-magnifying-glass"></i><input type="text" id="dsrch" placeholder="Search drives…" oninput="fdrives()"></div>
+        <select id="dsfilt" onchange="fdrives()" style="padding:7px 10px;border:1.5px solid #e2e5f0;border-radius:8px;font-size:0.8rem;font-family:'Inter',sans-serif;outline:none;color:#374151;background:#fff;">
+          <option value="">All Status</option><option value="active">Active</option><option value="closed">Closed</option>
+        </select>
+      </div>
+      {% if drives %}
+      <div class="pnl" style="padding:0;overflow:hidden;">
+        <table class="ct" id="dtbl">
+          <thead><tr><th>Drive Title</th><th>Role</th><th>Location</th><th>Salary</th><th>Deadline</th><th>Applicants</th><th>Shortlisted</th><th>Interviews</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody>
+            {% set lc=['#4285f4','#ea4335','#fbbc05','#34a853','#ff6900','#0078d4','#7c3aed','#0891b2'] %}
+            {% for d in drives %}
+            <tr class="dr" data-t="{{ d['title']|lower }}" data-s="{{ d['status'] }}">
+              <td>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <div class="cav" style="background:{{ lc[loop.index0 % lc|length] }};">{{ d['title'][0].upper() }}</div>
+                  <div>
+                    <div style="font-weight:700;color:#111827;font-size:0.8rem;">{{ d['title'] }}</div>
+                    <div style="font-size:0.68rem;color:#9ca3af;">{{ d['created'][:10] }}</div>
+                  </div>
+                </div>
+              </td>
+              <td>{{ d['role'] }}</td>
+              <td style="color:#6b7280;">{{ d['location'] }}</td>
+              <td style="color:#059669;font-weight:600;">₹{{ d['salary'] }} LPA</td>
+              <td style="color:#6b7280;">{{ d['deadline'] }}</td>
+              <td><strong>{{ d['app_count'] or 0 }}</strong></td>
+              <td><strong>{{ d['eligible_count'] or 0 }}</strong></td>
+              <td><strong>{{ d['interview_count'] or 0 }}</strong></td>
+              <td><span class="sb sb-{{ d['status'] }}">{{ d['status']|capitalize }}</span></td>
+              <td>
+                <div style="display:flex;gap:5px;">
+                  <a href="/drive/{{ d['id'] }}/applicants" style="width:26px;height:26px;border-radius:6px;background:#eef2ff;display:flex;align-items:center;justify-content:center;color:#4f46e5;text-decoration:none;" title="View"><i class="fa-solid fa-eye" style="font-size:0.7rem;"></i></a>
+                  <form action="/drive/{{ d['id'] }}/toggle" method="POST" style="margin:0;">
+                    <button type="submit" style="width:26px;height:26px;border-radius:6px;background:#f8f9ff;border:1px solid #e2e5f0;display:flex;align-items:center;justify-content:center;cursor:pointer;" title="{{ 'Close' if d['status']=='active' else 'Reopen' }}">
+                      <i class="fa-solid fa-{{ 'lock' if d['status']=='active' else 'lock-open' }}" style="font-size:0.65rem;color:#6b7280;"></i>
+                    </button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="pnl" style="text-align:center;padding:40px;">
+        <i class="fa-solid fa-briefcase" style="font-size:2rem;color:#e2e5f0;display:block;margin-bottom:10px;"></i>
+        <p style="font-size:0.85rem;color:#6b7280;margin-bottom:12px;">No drives posted yet.</p>
+        <button onclick="cs('create-drive')" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus"></i> Post Your First Drive</button>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- ══ CREATE DRIVE ══ -->
+    <div class="cd-sec" id="sec-create-drive">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;font-size:0.78rem;">
+        <button onclick="cs('drives')" style="background:none;border:none;cursor:pointer;color:#6b7280;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:4px;font-size:0.78rem;"><i class="fa-solid fa-arrow-left"></i></button>
+        <span style="color:#6b7280;cursor:pointer;" onclick="cs('drives')">Drives</span>
+        <i class="fa-solid fa-chevron-right" style="font-size:0.6rem;color:#9ca3af;"></i>
+        <span style="color:#4f46e5;font-weight:600;">Post New Drive</span>
+      </div>
+      <div style="font-size:1rem;font-weight:800;color:#111827;margin-bottom:14px;">Post a Hiring Drive</div>
+      <div class="pnl" style="max-width:820px;">
+        <form action="/drive/create" method="POST">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+            <div>
+              <p style="font-size:0.65rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#9ca3af;margin-bottom:12px;">Drive Details</p>
+              <div class="form-group"><label>Drive Title</label><input type="text" name="title" class="form-control" placeholder="e.g. Campus Hiring 2025" required></div>
+              <div class="form-group"><label>Job Role</label><input type="text" name="role" class="form-control" placeholder="e.g. Software Engineer Intern" required></div>
+              <div class="form-group"><label>Location</label><input type="text" name="location" class="form-control" placeholder="e.g. Hyderabad / Remote" required></div>
+              <div class="form-group"><label>Salary (LPA)</label><input type="number" step="0.1" name="salary" class="form-control" placeholder="e.g. 8.5" required></div>
+              <div class="form-group"><label>Application Deadline</label><input type="date" name="deadline" class="form-control" required></div>
+              <div class="form-group"><label>Job Description</label><textarea name="description" class="form-control" rows="3" placeholder="Describe the role…"></textarea></div>
+            </div>
+            <div>
+              <p style="font-size:0.65rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#9ca3af;margin-bottom:12px;">Eligibility Criteria</p>
+              <div style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:0.75rem;color:#4f46e5;font-weight:600;"><i class="fa-solid fa-brain"></i> AI will auto-score applicants based on these criteria</div>
+              <div class="form-group"><label>Minimum CGPA</label><input type="number" step="0.01" name="req_cgpa" class="form-control" placeholder="e.g. 7.0" value="0"></div>
+              <div class="form-group"><label>Required Degree</label>
+                <select name="req_degree" class="form-control"><option value="">Any Degree</option><option>B.Tech</option><option>M.Tech</option><option>B.E</option><option>BCA</option><option>MCA</option><option>MSC</option></select>
+              </div>
+              <div class="form-group"><label>Required Skills (comma-separated)</label><input type="text" name="req_skills" class="form-control" placeholder="Python, SQL, Machine Learning…"></div>
+              <div class="form-group"><label>Minimum Year of Passing</label><input type="number" name="req_year" class="form-control" placeholder="e.g. 2025" value="0"></div>
+              <div style="margin-top:16px;">
+                <p style="font-size:0.65rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#9ca3af;margin-bottom:8px;">Hiring Pipeline</p>
+                <div style="display:flex;align-items:center;gap:3px;flex-wrap:wrap;">
+                  {% for s in ['Applied','Eligible','Test','Interview','Selected'] %}
+                  <span style="background:#eef2ff;color:#4f46e5;padding:4px 10px;border-radius:5px;font-size:0.7rem;font-weight:600;">{{ s }}</span>
+                  {% if not loop.last %}<span style="color:#9ca3af;font-size:0.65rem;">→</span>{% endif %}
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
+          </div>
+          <hr style="border:none;border-top:1px solid #e2e5f0;margin:18px 0;">
+          <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;"><i class="fa-solid fa-paper-plane"></i> Post Drive</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ══ APPLICANTS ══ -->
+    <div class="cd-sec" id="sec-applicants">
+      <div style="font-size:1rem;font-weight:800;color:#111827;margin-bottom:14px;">All Applicants</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        {% for d in drives %}{% if d['app_count'] and d['app_count'] > 0 %}
+        <div class="pnl" style="padding:0;overflow:hidden;">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #f3f4f6;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div class="cav" style="background:#4f46e5;">{{ d['title'][0].upper() }}</div>
+              <div><div style="font-size:0.85rem;font-weight:700;color:#111827;">{{ d['title'] }}</div><div style="font-size:0.72rem;color:#6b7280;">{{ d['role'] }} · {{ d['app_count'] }} applicants</div></div>
+            </div>
+            <a href="/drive/{{ d['id'] }}/applicants" class="btn btn-primary btn-sm"><i class="fa-solid fa-eye"></i> View All</a>
+          </div>
+          <div style="padding:10px 16px;display:flex;gap:14px;font-size:0.75rem;color:#6b7280;">
+            <span><strong style="color:#4f46e5;">{{ d['app_count'] or 0 }}</strong> Applied</span>
+            <span><strong style="color:#7c3aed;">{{ d['eligible_count'] or 0 }}</strong> Eligible</span>
+            <span><strong style="color:#be185d;">{{ d['interview_count'] or 0 }}</strong> Interview</span>
+            <span><strong style="color:#059669;">{{ d['selected_count'] or 0 }}</strong> Selected</span>
+          </div>
+        </div>
+        {% endif %}{% else %}
+        <div class="pnl" style="text-align:center;padding:40px;color:#9ca3af;font-size:0.85rem;">No applicants yet.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- ══ PROFILES ══ -->
+    <div class="cd-sec" id="sec-profiles">
+      <div style="font-size:1rem;font-weight:800;color:#111827;margin-bottom:14px;">Company Profile</div>
+      <div class="pnl" style="max-width:520px;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid #f3f4f6;">
+          <div style="width:52px;height:52px;border-radius:12px;background:linear-gradient(135deg,#4f46e5,#7c3aed);display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:800;color:#fff;">{{ company['name'][0].upper() }}</div>
+          <div><div style="font-size:0.95rem;font-weight:800;color:#111827;">{{ company['name'] }}</div><div style="font-size:0.75rem;color:#6b7280;">{{ company['industry'] }}</div></div>
+        </div>
+        {% for label,val in [('Email',company['email']),('Phone',company['phone']),('Location',company['location']),('Industry',company['industry']),('Website',company['website'] or '—'),('About',company['about'] or '—')] %}
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:0.82rem;">
+          <span style="color:#6b7280;font-weight:500;">{{ label }}</span>
+          <span style="color:#111827;font-weight:600;text-align:right;max-width:60%;">{{ val }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+  </div><!-- cd-main -->
+</div><!-- cd-wrap -->
+
+<script>
+const SECS = ['dashboard','drives','create-drive','applicants','profiles'];
+const NAVS = ['dashboard','drives','applicants','profiles'];
+function cs(name) {
+  SECS.forEach(s => { const el=document.getElementById('sec-'+s); if(el) el.classList.toggle('on', s===name); });
+  NAVS.forEach(n => { const el=document.getElementById('n-'+n); if(el) el.classList.toggle('on', n===name); });
+}
+(function(){ const p=new URLSearchParams(window.location.search).get('section'); if(p) cs(p); })();
+
+function fdrives() {
+  const q=document.getElementById('dsrch').value.toLowerCase();
+  const st=document.getElementById('dsfilt').value;
+  document.querySelectorAll('.dr').forEach(r => {
+    r.style.display=(!q||r.dataset.t.includes(q))&&(!st||r.dataset.s===st)?'':'none';
+  });
+}
+
+{% if timeline_labels %}
+(function(){
+  new Chart(document.getElementById('lineChart').getContext('2d'),{
+    type:'line',
+    data:{
+      labels:{{ timeline_labels|tojson }},
+      datasets:[
+        {label:'Applications',data:{{ timeline_apps|tojson }},borderColor:'#4f46e5',backgroundColor:'rgba(79,70,229,.08)',borderWidth:2,pointRadius:3,pointBackgroundColor:'#4f46e5',tension:.4,fill:true},
+        {label:'Shortlisted',data:{{ timeline_shortlist|tojson }},borderColor:'#059669',backgroundColor:'rgba(5,150,105,.06)',borderWidth:2,pointRadius:3,pointBackgroundColor:'#059669',tension:.4,fill:true}
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{font:{size:9},color:'#9ca3af'}},y:{grid:{color:'#f3f4f6'},ticks:{font:{size:9},color:'#9ca3af'},beginAtZero:true}}}
+  });
+})();
+{% endif %}
+
+{% set total_s = status_counts.values()|sum %}
+{% if total_s > 0 %}
+(function(){
+  new Chart(document.getElementById('donutChart').getContext('2d'),{
+    type:'doughnut',
+    data:{
+      labels:['Applied','Shortlisted','Interview','Offered','Rejected'],
+      datasets:[{data:[{{ status_counts['applied'] }},{{ status_counts['eligible'] }},{{ status_counts['interview'] }},{{ status_counts['selected'] }},{{ status_counts['rejected'] }}],backgroundColor:['#4f46e5','#7c3aed','#ec4899','#10b981','#ef4444'],borderWidth:2,borderColor:'#fff',hoverOffset:4}]
+    },
+    options:{cutout:'65%',maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.label}: ${c.parsed}`}}},animation:{duration:700}}
+  });
+})();
+{% endif %}
+</script>
+{% endblock %}

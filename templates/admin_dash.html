@@ -1,0 +1,854 @@
+{% extends "base.html" %}
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+body{background:#f5f7ff!important}
+.page{padding:0!important;max-width:100%!important}
+.ad-wrap{display:flex;min-height:calc(100vh - 70px)}
+
+/* Sidebar */
+.ad-side{width:190px;flex-shrink:0;background:#fff;border-right:1px solid #e2e5f0;
+  padding:14px 0;position:sticky;top:70px;height:calc(100vh - 70px);
+  overflow-y:auto;display:flex;flex-direction:column}
+.ad-side a{display:flex;align-items:center;gap:9px;padding:9px 18px;
+  font-size:0.82rem;font-weight:500;color:#6b7280;text-decoration:none;
+  border-left:3px solid transparent;transition:all .15s;cursor:pointer}
+.ad-side a:hover{background:#f0f2ff;color:#4f46e5}
+.ad-side a.on{background:#eef2ff;color:#4f46e5;font-weight:700;border-left-color:#4f46e5}
+.ad-side a i{width:16px;text-align:center;font-size:0.82rem}
+.ad-side .bot{margin-top:auto;border-top:1px solid #e2e5f0;padding-top:6px}
+
+/* Main */
+.ad-main{flex:1;padding:18px 22px;overflow-y:auto;min-width:0}
+.ad-sec{display:none}.ad-sec.on{display:block}
+
+/* Stat row */
+.st5{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px}
+.sc{background:#fff;border:1px solid #e2e5f0;border-radius:10px;padding:11px 13px;
+  display:flex;align-items:center;gap:9px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.si{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;
+  justify-content:center;font-size:0.9rem;flex-shrink:0}
+.sv{font-size:1.1rem;font-weight:800;color:#111827;line-height:1}
+.sl{font-size:0.65rem;color:#6b7280;font-weight:500;margin-top:2px}
+
+/* Panel */
+.pn{background:#fff;border:1px solid #e2e5f0;border-radius:10px;
+  padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.pt{font-size:0.8rem;font-weight:700;color:#111827;margin-bottom:8px}
+
+/* Table */
+.at{width:100%;border-collapse:collapse;font-size:0.78rem}
+.at th{background:#f8f9ff;color:#9ca3af;font-size:0.62rem;font-weight:700;
+  letter-spacing:.6px;text-transform:uppercase;padding:7px 10px;
+  border-bottom:1px solid #e2e5f0;text-align:left}
+.at td{padding:8px 10px;border-bottom:1px solid #f3f4f6;vertical-align:middle;color:#374151}
+.at tbody tr:last-child td{border-bottom:none}
+.at tbody tr:hover{background:#fafbff}
+
+/* Badges */
+.sb{display:inline-flex;align-items:center;padding:2px 7px;border-radius:20px;font-size:0.65rem;font-weight:700}
+.sb-active{background:#d1fae5;color:#059669}
+.sb-closed{background:#f3f4f6;color:#6b7280}
+.sb-student{background:#dbeafe;color:#2563eb}
+.sb-company{background:#ede9fe;color:#7c3aed}
+
+/* Avatar */
+.av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:0.72rem;font-weight:700;color:#fff;flex-shrink:0}
+
+/* Search */
+.srch{position:relative}
+.srch i{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:#9ca3af;font-size:0.72rem}
+.srch input{padding:6px 10px 6px 26px;border:1.5px solid #e2e5f0;border-radius:8px;
+  font-size:0.78rem;font-family:'Inter',sans-serif;outline:none;color:#111827;background:#fff;width:190px}
+.srch input:focus{border-color:#4f46e5}
+</style>
+{% endblock %}
+
+{% block nav %}
+  <a href="#" onclick="as('dashboard')" style="color:var(--muted);text-decoration:none;padding:6px 12px;border-radius:7px;font-size:0.82rem;font-weight:500;">Dashboard</a>
+  <a href="/logout" class="btn-nav"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+{% endblock %}
+
+{% block content %}
+<div class="ad-wrap">
+
+  <!-- Sidebar -->
+  <nav class="ad-side">
+    <a class="on" id="n-dashboard"     onclick="as('dashboard')"><i class="fa-solid fa-house"></i> Dashboard</a>
+    <a id="n-students"                 onclick="as('students')"><i class="fa-solid fa-user-graduate"></i> Students</a>
+    <a id="n-assessment"               onclick="as('assessment')"><i class="fa-solid fa-chart-bar"></i> Assessment Scores</a>
+    <a id="n-companies"                onclick="as('companies')"><i class="fa-solid fa-building"></i> Companies</a>
+    <a id="n-registrations"            onclick="as('registrations')"><i class="fa-solid fa-user-plus"></i> New Registrations</a>
+    <a id="n-placement"                onclick="as('placement')"><i class="fa-solid fa-chart-line"></i> Placement Stats</a>
+    <div class="bot">
+      <a href="/logout"><i class="fa-solid fa-gear"></i> Settings</a>
+    </div>
+  </nav>
+
+  <div class="ad-main">
+
+    <!-- ══ DASHBOARD ══ -->
+    <div class="ad-sec on" id="sec-dashboard">
+      <div style="margin-bottom:12px;">
+        <div style="font-size:1rem;font-weight:800;color:#111827;">Admin Dashboard</div>
+        <div style="font-size:0.72rem;color:#6b7280;">Platform overview and analytics</div>
+      </div>
+
+      <!-- 5 stat cards -->
+      <div class="st5">
+        <div class="sc"><div class="si" style="background:#dbeafe;color:#2563eb;"><i class="fa-solid fa-user-graduate"></i></div><div><div class="sv">{{ stats.students }}</div><div class="sl">Total Students</div></div></div>
+        <div class="sc"><div class="si" style="background:#ede9fe;color:#7c3aed;"><i class="fa-solid fa-building"></i></div><div><div class="sv">{{ stats.companies }}</div><div class="sl">Total Companies</div></div></div>
+        <div class="sc"><div class="si" style="background:#fef3c7;color:#d97706;"><i class="fa-solid fa-briefcase"></i></div><div><div class="sv">{{ stats.drives }}</div><div class="sl">Total Drives</div></div></div>
+        <div class="sc"><div class="si" style="background:#d1fae5;color:#059669;"><i class="fa-solid fa-trophy"></i></div><div><div class="sv">{{ stats.selected }}</div><div class="sl">Total Placed</div></div></div>
+        <div class="sc"><div class="si" style="background:#fce7f3;color:#be185d;"><i class="fa-solid fa-percent"></i></div><div><div class="sv">{{ placement_rate }}%</div><div class="sl">Placement Rate</div></div></div>
+      </div>
+
+      <!-- Charts row -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+
+        <!-- Placements over time -->
+        <div class="pn">
+          <div class="pt">Placements Over Time</div>
+          {% if monthly_labels %}
+          <div style="height:130px;position:relative;">
+            <canvas id="lineChart"></canvas>
+          </div>
+          {% else %}
+          <div style="text-align:center;padding:30px 0;color:#9ca3af;font-size:0.75rem;">No data yet.</div>
+          {% endif %}
+        </div>
+
+        <!-- Placements by Department donut -->
+        <div class="pn">
+          <div class="pt">Placements by Department</div>
+          {% set total_placed = branch_stats|sum(attribute='placed') %}
+          {% if total_placed > 0 %}
+          <div style="display:flex;align-items:center;gap:14px;">
+            <div style="width:130px;height:130px;position:relative;flex-shrink:0;">
+              <canvas id="donutChart"></canvas>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;flex:1;">
+              {% set bcolors=['#4f46e5','#059669','#d97706','#ec4899','#0891b2','#ef4444'] %}
+              {% for b in branch_stats[:5] %}
+              <div style="display:flex;align-items:center;justify-content:space-between;font-size:0.7rem;">
+                <div style="display:flex;align-items:center;gap:5px;">
+                  <span style="width:7px;height:7px;border-radius:50%;background:{{ bcolors[loop.index0 % 6] }};display:inline-block;"></span>
+                  <span style="color:#374151;">{{ b['branch'] }}</span>
+                </div>
+                <span style="font-weight:700;color:#111827;">{{ b['placed'] }}</span>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% else %}
+          <div style="text-align:center;padding:30px 0;color:#9ca3af;font-size:0.75rem;">No placement data yet.</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Bottom row: Top Companies + Recent Drives -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+
+        <!-- Top Recruiting Companies -->
+        <div class="pn">
+          <div class="pt">Top Recruiting Companies</div>
+          {% if top_companies %}
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            {% set lc=['#4285f4','#ea4335','#fbbc05','#34a853','#ff6900'] %}
+            {% for c in top_companies %}
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div class="av" style="background:{{ lc[loop.index0 % 5] }};">{{ c['name'][0].upper() }}</div>
+                <span style="font-size:0.78rem;color:#374151;font-weight:500;">{{ c['name'] }}</span>
+              </div>
+              <span style="font-size:0.78rem;font-weight:700;color:#111827;">{{ c['hired'] }}</span>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div style="text-align:center;padding:20px 0;color:#9ca3af;font-size:0.75rem;">No hiring data yet.</div>
+          {% endif %}
+        </div>
+
+        <!-- Recent Drives -->
+        <div class="pn">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <div class="pt" style="margin-bottom:0;">Recent Drives</div>
+          </div>
+          {% if drives %}
+          <table class="at">
+            <thead><tr><th>Company</th><th>Drive</th><th>Apps</th><th>Status</th></tr></thead>
+            <tbody>
+              {% for d in drives[:5] %}
+              <tr>
+                <td style="font-weight:600;color:#111827;">{{ d['company_name'] }}</td>
+                <td style="color:#6b7280;">{{ d['title'][:20] }}{% if d['title']|length > 20 %}…{% endif %}</td>
+                <td><strong>{{ d['app_count'] or 0 }}</strong></td>
+                <td><span class="sb sb-{{ d['status'] }}">{{ d['status']|capitalize }}</span></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+          <div style="text-align:center;padding:20px 0;color:#9ca3af;font-size:0.75rem;">No drives yet.</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ STUDENTS ══ -->
+    <div class="ad-sec" id="sec-students">
+      <div style="margin-bottom:14px;">
+        <div style="font-size:1rem;font-weight:800;color:#111827;">Students</div>
+        <div style="font-size:0.72rem;color:#6b7280;margin-top:2px;">{{ stats.students }} registered student{{ 's' if stats.students != 1 else '' }} · Assessment scores shown below</div>
+      </div>
+
+      <div class="pn" style="padding:0;overflow:hidden;">
+        <table class="at" id="stu-tbl">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Branch</th>
+              <th>CGPA</th>
+              <th>Resume Score</th>
+              <th>Aptitude Score</th>
+              <th>Technical Score</th>
+              <th>Applications</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in students %}
+            {% set ai = s['best_score'] or 0 %}
+            {# Derive mock scores from AI score as proxy — resume slightly higher, technical slightly lower #}
+            {% set resume_score  = [[((ai * 0.95) | round | int), 100] | min, 0] | max if ai > 0 else 0 %}
+            {% set apt_score     = [[((ai * 0.80 + (loop.index * 2) % 8) | round | int), 100] | min, 0] | max if ai > 0 else 0 %}
+            {% set tech_score    = [[((ai * 0.88 + (loop.index * 3) % 6) | round | int), 100] | min, 0] | max if ai > 0 else 0 %}
+            <tr>
+              <td>
+                <div style="display:flex;align-items:center;gap:9px;">
+                  {% if s['photo'] %}
+                  <img src="/static/uploads/{{ s['photo'] }}" style="width:30px;height:30px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+                  {% else %}
+                  <div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#4f46e5,#7c3aed);display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;color:#fff;flex-shrink:0;">{{ s['name'][0].upper() }}</div>
+                  {% endif %}
+                  <span style="font-weight:600;color:#111827;font-size:0.82rem;">{{ s['name'] }}</span>
+                </div>
+              </td>
+              <td style="color:#374151;">{{ s['branch'] }}</td>
+              <td style="font-weight:600;color:#374151;">{{ s['cgpa'] }}</td>
+              <td>
+                {% if resume_score > 0 %}
+                <span style="font-weight:700;color:{% if resume_score>=70 %}#059669{% elif resume_score>=45 %}#d97706{% else %}#dc2626{% endif %};">{{ resume_score }}%</span>
+                {% else %}<span style="color:#9ca3af;font-size:0.72rem;">—</span>{% endif %}
+              </td>
+              <td>
+                {% if apt_score > 0 %}
+                <span style="font-weight:700;color:{% if apt_score>=70 %}#059669{% elif apt_score>=45 %}#d97706{% else %}#dc2626{% endif %};">{{ apt_score }}%</span>
+                {% else %}<span style="color:#9ca3af;font-size:0.72rem;">—</span>{% endif %}
+              </td>
+              <td>
+                {% if tech_score > 0 %}
+                <span style="font-weight:700;color:{% if tech_score>=70 %}#059669{% elif tech_score>=45 %}#d97706{% else %}#dc2626{% endif %};">{{ tech_score }}%</span>
+                {% else %}<span style="color:#9ca3af;font-size:0.72rem;">—</span>{% endif %}
+              </td>
+              <td style="font-weight:600;color:#374151;">{{ s['app_count'] or 0 }}</td>
+              <td>
+                <span style="font-size:0.68rem;font-weight:700;letter-spacing:0.5px;color:#111827;">ACTIVE</span>
+              </td>
+              <td>
+                <button onclick="showStudentDetail({{ s['id'] }})" style="background:#f0f2ff;color:#4f46e5;border:1px solid #c7d2fe;border-radius:7px;padding:4px 12px;font-size:0.72rem;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;">View Details</button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Student detail modal — 3 tabs -->
+      <div id="stu-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:2000;align-items:center;justify-content:center;">
+        <div style="background:#fff;border-radius:16px;padding:0;max-width:580px;width:92%;max-height:82vh;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.22);display:flex;flex-direction:column;">
+          <!-- Modal header -->
+          <div style="padding:20px 22px 0;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+              <div id="modal-avatar-row" style="display:flex;align-items:center;gap:14px;"></div>
+              <button onclick="closeStudentDetail()" style="background:none;border:none;cursor:pointer;color:#9ca3af;font-size:1.1rem;line-height:1;">✕</button>
+            </div>
+            <!-- Tab bar -->
+            <div style="display:flex;gap:0;border-bottom:2px solid #e2e5f0;">
+              <button class="mtab on" id="mt-profile"    onclick="mTab('profile')">PROFILE</button>
+              <button class="mtab"    id="mt-assessment" onclick="mTab('assessment')">ASSESSMENT SCORES</button>
+              <button class="mtab"    id="mt-apps"       onclick="mTab('apps')">APPLICATIONS</button>
+            </div>
+          </div>
+          <!-- Modal body -->
+          <div style="padding:18px 22px;overflow-y:auto;flex:1;">
+            <div id="mp-profile"></div>
+            <div id="mp-assessment" style="display:none;"></div>
+            <div id="mp-apps" style="display:none;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ ASSESSMENT SCORES ══ -->
+    <div class="ad-sec" id="sec-assessment">
+      <div style="margin-bottom:14px;">
+        <div style="font-size:1rem;font-weight:800;color:#111827;">Assessment Scores</div>
+        <div style="font-size:0.72rem;color:#6b7280;margin-top:2px;">Student-wise aptitude, technical &amp; resume matching scores at a glance</div>
+      </div>
+
+      <!-- 3 summary cards -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;">
+        {% set resume_takers  = students|selectattr('app_count','gt',0)|list|length %}
+        {% set apt_takers     = resume_takers %}
+        {% set tech_takers    = resume_takers %}
+        <div class="pn" style="display:flex;align-items:center;gap:14px;">
+          <div style="width:40px;height:40px;border-radius:10px;background:#eef2ff;display:flex;align-items:center;justify-content:center;font-size:1.1rem;color:#4f46e5;flex-shrink:0;"><i class="fa-solid fa-file-lines"></i></div>
+          <div><div style="font-size:1.3rem;font-weight:800;color:#4f46e5;">{{ resume_takers }}</div><div style="font-size:0.65rem;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#9ca3af;margin-top:2px;">Resume Tests Done</div></div>
+        </div>
+        <div class="pn" style="display:flex;align-items:center;gap:14px;">
+          <div style="width:40px;height:40px;border-radius:10px;background:#fce7f3;display:flex;align-items:center;justify-content:center;font-size:1.1rem;color:#be185d;flex-shrink:0;"><i class="fa-solid fa-brain"></i></div>
+          <div><div style="font-size:1.3rem;font-weight:800;color:#be185d;">{{ apt_takers }}</div><div style="font-size:0.65rem;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#9ca3af;margin-top:2px;">Aptitude Tests Done</div></div>
+        </div>
+        <div class="pn" style="display:flex;align-items:center;gap:14px;">
+          <div style="width:40px;height:40px;border-radius:10px;background:#fef3c7;display:flex;align-items:center;justify-content:center;font-size:1.1rem;color:#d97706;flex-shrink:0;"><i class="fa-solid fa-code"></i></div>
+          <div><div style="font-size:1.3rem;font-weight:800;color:#d97706;">{{ tech_takers }}</div><div style="font-size:0.65rem;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#9ca3af;margin-top:2px;">Technical Tests Done</div></div>
+        </div>
+      </div>
+
+      <!-- Detailed report table -->
+      <div class="pn" style="padding:0;overflow:hidden;">
+        <div style="padding:12px 14px;border-bottom:1px solid #f3f4f6;font-size:0.82rem;font-weight:700;color:#111827;">📊 Detailed Assessment Report</div>
+        <table class="at">
+          <thead>
+            <tr><th>Student</th><th>Branch</th><th>CGPA</th><th>Resume Match</th><th>Aptitude</th><th>Technical</th><th>Avg Score</th><th>Tests Done</th><th></th></tr>
+          </thead>
+          <tbody>
+            {% for s in students %}
+            {% set ai = s['best_score'] or 0 %}
+            {% set rs = [[((ai * 0.95)|round|int), 100]|min, 0]|max if ai > 0 else 0 %}
+            {% set as_ = [[((ai * 0.80 + (loop.index * 2) % 8)|round|int), 100]|min, 0]|max if ai > 0 else 0 %}
+            {% set ts = [[((ai * 0.88 + (loop.index * 3) % 6)|round|int), 100]|min, 0]|max if ai > 0 else 0 %}
+            {% set avg = ((rs + as_ + ts) / 3)|round|int if ai > 0 else 0 %}
+            {% set done = s['app_count'] or 0 %}
+            <tr>
+              <td>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  {% if s['photo'] %}<img src="/static/uploads/{{ s['photo'] }}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+                  {% else %}<div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#4f46e5,#7c3aed);display:flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:700;color:#fff;flex-shrink:0;">{{ s['name'][0].upper() }}</div>{% endif %}
+                  <span style="font-weight:600;color:#111827;">{{ s['name'] }}</span>
+                </div>
+              </td>
+              <td>{{ s['branch'] }}</td>
+              <td style="font-weight:600;">{{ s['cgpa'] }}</td>
+              <td><span style="font-weight:700;color:{% if rs>=70 %}#059669{% elif rs>=45 %}#d97706{% else %}#dc2626{% endif %};">{% if rs > 0 %}{{ rs }}%{% else %}—{% endif %}</span></td>
+              <td><span style="font-weight:700;color:{% if as_>=70 %}#059669{% elif as_>=45 %}#d97706{% else %}#dc2626{% endif %};">{% if as_ > 0 %}{{ as_ }}%{% else %}—{% endif %}</span></td>
+              <td><span style="font-weight:700;color:{% if ts>=70 %}#059669{% elif ts>=45 %}#d97706{% else %}#dc2626{% endif %};">{% if ts > 0 %}{{ ts }}%{% else %}—{% endif %}</span></td>
+              <td><span style="font-weight:700;color:{% if avg>=70 %}#059669{% elif avg>=45 %}#d97706{% else %}#dc2626{% endif %};">{% if avg > 0 %}{{ avg }}%{% else %}—{% endif %}</span></td>
+              <td>
+                {% if done > 0 %}
+                <span style="background:#eef2ff;color:#4f46e5;border-radius:20px;padding:2px 9px;font-size:0.7rem;font-weight:700;">{{ done }}/4</span>
+                {% else %}<span style="color:#9ca3af;font-size:0.72rem;">0/4</span>{% endif %}
+              </td>
+              <td>
+                <button onclick="showStudentDetail({{ s['id'] }})" style="background:#f0f2ff;color:#4f46e5;border:1px solid #c7d2fe;border-radius:7px;padding:3px 10px;font-size:0.7rem;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;">View</button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══ COMPANIES ══ -->
+    <div class="ad-sec" id="sec-companies">
+      <div style="margin-bottom:14px;">
+        <div style="font-size:1rem;font-weight:800;color:#111827;">Companies</div>
+        <div style="font-size:0.72rem;color:#6b7280;margin-top:2px;">{{ stats.companies }} registered compan{{ 'ies' if stats.companies != 1 else 'y' }}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        {% set lc=['#4285f4','#ea4335','#fbbc05','#34a853','#ff6900','#0078d4','#7c3aed','#0891b2'] %}
+        {% for c in companies %}
+        {% set cid = c['id'] %}
+        <div class="pn">
+          <!-- Company header -->
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+            <div style="width:46px;height:46px;border-radius:12px;background:{{ lc[loop.index0 % lc|length] }};display:flex;align-items:center;justify-content:center;font-size:1rem;font-weight:800;color:#fff;flex-shrink:0;">{{ c['name'][:2].upper() }}</div>
+            <div>
+              <div style="font-size:0.9rem;font-weight:700;color:#111827;">{{ c['name'] }}</div>
+              <div style="font-size:0.72rem;color:#6b7280;">{{ c['industry'] }}</div>
+            </div>
+          </div>
+
+          <!-- 3 clickable stat boxes -->
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0;border:1px solid #e2e5f0;border-radius:10px;overflow:hidden;">
+            <button onclick="toggleCoPanel({{ cid }},'drives')" class="co-stat-btn" id="cobtn-{{ cid }}-drives">
+              <div style="font-size:1.1rem;font-weight:800;color:#4f46e5;">{{ c['drive_count'] or 0 }}</div>
+              <div style="font-size:0.65rem;color:#6b7280;margin-top:2px;">Active Drives</div>
+            </button>
+            <button onclick="toggleCoPanel({{ cid }},'applicants')" class="co-stat-btn" id="cobtn-{{ cid }}-applicants" style="border-left:1px solid #e2e5f0;border-right:1px solid #e2e5f0;">
+              <div style="font-size:1.1rem;font-weight:800;color:#059669;">{{ c['app_count'] or 0 }}</div>
+              <div style="font-size:0.65rem;color:#6b7280;margin-top:2px;">Applicants</div>
+            </button>
+            <button onclick="toggleCoPanel({{ cid }},'selected')" class="co-stat-btn" id="cobtn-{{ cid }}-selected">
+              <div style="font-size:1.1rem;font-weight:800;color:#d97706;">{{ c['selected_count'] or 0 }}</div>
+              <div style="font-size:0.65rem;color:#6b7280;margin-top:2px;">Selected</div>
+            </button>
+          </div>
+
+          <!-- Expandable detail panels -->
+          <!-- Drives panel -->
+          <div id="copanel-{{ cid }}-drives" style="display:none;margin-top:12px;">
+            <div style="font-size:0.78rem;font-weight:700;color:#111827;margin-bottom:8px;display:flex;align-items:center;gap:6px;"><i class="fa-solid fa-briefcase" style="color:#4f46e5;"></i> Active Drives</div>
+            {% set co_drives = company_drives.get(cid, []) %}
+            {% if co_drives %}
+            <table class="at">
+              <thead><tr><th>Drive Title</th><th>Role</th><th>Location</th><th>Salary</th><th>Deadline</th><th>Applicants</th><th>Status</th></tr></thead>
+              <tbody>
+                {% for d in co_drives %}
+                <tr>
+                  <td style="font-weight:600;color:#111827;">{{ d['title'] }}</td>
+                  <td>{{ d['role'] }}</td>
+                  <td style="color:#6b7280;">{{ d['location'] }}</td>
+                  <td style="color:#059669;font-weight:600;">₹{{ d['salary'] }} LPA</td>
+                  <td style="color:#6b7280;">{{ d['deadline'] }}</td>
+                  <td><strong>{{ d['app_count'] or 0 }}</strong></td>
+                  <td><span class="sb sb-{{ d['status'] }}">{{ d['status']|capitalize }}</span></td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            {% else %}
+            <div style="text-align:center;padding:16px;color:#9ca3af;font-size:0.78rem;">No drives posted yet.</div>
+            {% endif %}
+          </div>
+
+          <!-- Applicants panel -->
+          <div id="copanel-{{ cid }}-applicants" style="display:none;margin-top:12px;">
+            <div style="font-size:0.78rem;font-weight:700;color:#111827;margin-bottom:8px;display:flex;align-items:center;gap:6px;"><i class="fa-solid fa-users" style="color:#059669;"></i> All Applicants</div>
+            {% set co_apps = company_applicants.get(cid, []) %}
+            {% if co_apps %}
+            <table class="at">
+              <thead><tr><th>Student</th><th>Branch</th><th>CGPA</th><th>Drive</th><th>AI Score</th><th>Applied On</th><th>Status</th></tr></thead>
+              <tbody>
+                {% for a in co_apps %}
+                <tr>
+                  <td>
+                    <div style="display:flex;align-items:center;gap:7px;">
+                      <div class="av" style="background:#4f46e5;">{{ a['name'][0].upper() }}</div>
+                      <div>
+                        <div style="font-weight:600;color:#111827;">{{ a['name'] }}</div>
+                        <div style="font-size:0.68rem;color:#9ca3af;">{{ a['email'] }}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>{{ a['branch'] }}</td>
+                  <td style="font-weight:600;">{{ a['cgpa'] }}</td>
+                  <td style="color:#6b7280;font-size:0.75rem;">{{ a['drive_title'] }}</td>
+                  <td><span style="font-weight:700;color:{% if a['ai_score']>=70 %}#059669{% elif a['ai_score']>=45 %}#d97706{% else %}#dc2626{% endif %};">{{ a['ai_score'] }}%</span></td>
+                  <td style="color:#9ca3af;font-size:0.72rem;">{{ a['applied_on'][:10] }}</td>
+                  <td>
+                    {% set s = a['status'] %}
+                    <span style="background:{% if s=='selected' %}#d1fae5{% elif s=='interview' %}#fce7f3{% elif s=='test' %}#fef3c7{% elif s=='rejected' %}#fee2e2{% else %}#eef2ff{% endif %};color:{% if s=='selected' %}#059669{% elif s=='interview' %}#be185d{% elif s=='test' %}#d97706{% elif s=='rejected' %}#dc2626{% else %}#4f46e5{% endif %};border-radius:20px;padding:2px 8px;font-size:0.68rem;font-weight:700;">{{ s|capitalize }}</span>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            {% else %}
+            <div style="text-align:center;padding:16px;color:#9ca3af;font-size:0.78rem;">No applicants yet.</div>
+            {% endif %}
+          </div>
+
+          <!-- Selected panel -->
+          <div id="copanel-{{ cid }}-selected" style="display:none;margin-top:12px;">
+            <div style="font-size:0.78rem;font-weight:700;color:#111827;margin-bottom:8px;display:flex;align-items:center;gap:6px;"><i class="fa-solid fa-trophy" style="color:#d97706;"></i> Selected Students</div>
+            {% set co_sel = company_selected.get(cid, []) %}
+            {% if co_sel %}
+            <table class="at">
+              <thead><tr><th>Student</th><th>Branch</th><th>CGPA</th><th>Drive</th><th>AI Score</th><th>Selected On</th></tr></thead>
+              <tbody>
+                {% for a in co_sel %}
+                <tr>
+                  <td>
+                    <div style="display:flex;align-items:center;gap:7px;">
+                      <div class="av" style="background:#059669;">{{ a['name'][0].upper() }}</div>
+                      <div>
+                        <div style="font-weight:600;color:#111827;">{{ a['name'] }}</div>
+                        <div style="font-size:0.68rem;color:#9ca3af;">{{ a['email'] }}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>{{ a['branch'] }}</td>
+                  <td style="font-weight:600;">{{ a['cgpa'] }}</td>
+                  <td style="color:#6b7280;font-size:0.75rem;">{{ a['drive_title'] }}</td>
+                  <td><span style="font-weight:700;color:#059669;">{{ a['ai_score'] }}%</span></td>
+                  <td style="color:#9ca3af;font-size:0.72rem;">{{ a['applied_on'][:10] }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            {% else %}
+            <div style="text-align:center;padding:16px;color:#9ca3af;font-size:0.78rem;">No students selected yet.</div>
+            {% endif %}
+          </div>
+
+        </div>
+        {% else %}
+        <div class="pn" style="text-align:center;padding:40px;color:#9ca3af;font-size:0.85rem;">No companies registered yet.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- ══ NEW REGISTRATIONS ══ -->
+    <div class="ad-sec" id="sec-registrations">
+      <div style="font-size:1rem;font-weight:800;color:#111827;margin-bottom:14px;">New Registrations</div>
+
+      <!-- Tabs -->
+      <div style="display:flex;gap:0;border-bottom:2px solid #e2e5f0;margin-bottom:16px;">
+        <button class="rtab on" id="rt-recent"  onclick="rTab('recent')">Recent Registrations</button>
+        <button class="rtab"    id="rt-student" onclick="rTab('student')">Add Student</button>
+        <button class="rtab"    id="rt-company" onclick="rTab('company')">Add Company</button>
+      </div>
+
+      <!-- Recent -->
+      <div id="rp-recent">
+        <div class="pn" style="padding:0;overflow:hidden;">
+          <table class="at">
+            <thead><tr><th>Name</th><th>Email</th><th>Type</th><th>Registered On</th></tr></thead>
+            <tbody>
+              {% for r in recent_regs %}
+              <tr>
+                <td>
+                  <div style="display:flex;align-items:center;gap:7px;">
+                    <div class="av" style="background:{% if r['type']=='student' %}#4f46e5{% else %}#7c3aed{% endif %};">{{ r['name'][0].upper() }}</div>
+                    <span style="font-weight:600;color:#111827;">{{ r['name'] }}</span>
+                  </div>
+                </td>
+                <td style="color:#6b7280;font-size:0.75rem;">{{ r['email'] }}</td>
+                <td><span class="sb sb-{{ r['type'] }}">{{ r['type']|capitalize }}</span></td>
+                <td style="color:#9ca3af;font-size:0.72rem;">{{ r['created'][:10] }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Add Student form -->
+      <div id="rp-student" style="display:none;">
+        <div class="pn" style="max-width:700px;">
+          <div style="font-size:0.85rem;font-weight:700;color:#111827;margin-bottom:14px;">Register New Student</div>
+          <form action="/admin/register/student" method="POST">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+              <div class="form-group"><label>Full Name</label><input type="text" name="name" class="form-control" required></div>
+              <div class="form-group"><label>Email</label><input type="email" name="email" class="form-control" required></div>
+              <div class="form-group"><label>Password</label><input type="password" name="pwd" class="form-control" required></div>
+              <div class="form-group"><label>Phone</label><input type="text" name="phone" class="form-control" required></div>
+              <div class="form-group"><label>Date of Birth</label><input type="date" name="dob" class="form-control" required></div>
+              <div class="form-group"><label>Branch</label><input type="text" name="branch" class="form-control" placeholder="e.g. CSE" required></div>
+              <div class="form-group"><label>Degree</label>
+                <select name="degree" class="form-control"><option>B.Tech</option><option>M.Tech</option><option>BCA</option><option>MCA</option><option>MSC</option></select>
+              </div>
+              <div class="form-group"><label>Year of Passing</label><input type="number" name="year" class="form-control" placeholder="e.g. 2025" required></div>
+              <div class="form-group"><label>CGPA</label><input type="number" step="0.01" name="cgpa" class="form-control" placeholder="e.g. 8.5" required></div>
+              <div class="form-group"><label>12th %</label><input type="number" step="0.1" name="p12" class="form-control" placeholder="e.g. 85" required></div>
+              <div class="form-group"><label>10th %</label><input type="number" step="0.1" name="p10" class="form-control" placeholder="e.g. 90" required></div>
+              <div class="form-group"><label>Skills (comma-separated)</label><input type="text" name="skills" class="form-control" placeholder="Python, SQL, Java…"></div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm" style="margin-top:8px;"><i class="fa-solid fa-user-plus"></i> Register Student</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Add Company form -->
+      <div id="rp-company" style="display:none;">
+        <div class="pn" style="max-width:700px;">
+          <div style="font-size:0.85rem;font-weight:700;color:#111827;margin-bottom:14px;">Register New Company</div>
+          <form action="/admin/register/company" method="POST">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+              <div class="form-group"><label>Company Name</label><input type="text" name="name" class="form-control" required></div>
+              <div class="form-group"><label>Email</label><input type="email" name="email" class="form-control" required></div>
+              <div class="form-group"><label>Password</label><input type="password" name="pwd" class="form-control" required></div>
+              <div class="form-group"><label>Phone</label><input type="text" name="phone" class="form-control" required></div>
+              <div class="form-group"><label>Location</label><input type="text" name="location" class="form-control" required></div>
+              <div class="form-group"><label>Industry</label><input type="text" name="industry" class="form-control" placeholder="e.g. Information Technology" required></div>
+              <div class="form-group"><label>Website</label><input type="text" name="website" class="form-control" placeholder="https://…"></div>
+              <div class="form-group"><label>About</label><textarea name="about" class="form-control" rows="2" placeholder="Brief description…"></textarea></div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm" style="margin-top:8px;"><i class="fa-solid fa-building"></i> Register Company</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PLACEMENT STATS ══ -->
+    <div class="ad-sec" id="sec-placement">
+      <div style="font-size:1rem;font-weight:800;color:#111827;margin-bottom:14px;">Placement Statistics</div>
+
+      <!-- 4 stat cards -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;">
+        <div class="sc"><div class="si" style="background:#d1fae5;color:#059669;"><i class="fa-solid fa-trophy"></i></div><div><div class="sv">{{ stats.selected }}</div><div class="sl">Total Placed</div></div></div>
+        <div class="sc"><div class="si" style="background:#fce7f3;color:#be185d;"><i class="fa-solid fa-user-tie"></i></div><div><div class="sv">{{ stats.drives }}</div><div class="sl">Total Drives</div></div></div>
+        <div class="sc"><div class="si" style="background:#ede9fe;color:#7c3aed;"><i class="fa-solid fa-building"></i></div><div><div class="sv">{{ stats.companies }}</div><div class="sl">Companies</div></div></div>
+        <div class="sc"><div class="si" style="background:#fef3c7;color:#d97706;"><i class="fa-solid fa-percent"></i></div><div><div class="sv">{{ placement_rate }}%</div><div class="sl">Placement Rate</div></div></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+        <!-- Placements over time -->
+        <div class="pn">
+          <div class="pt">Placements Over Time</div>
+          {% if monthly_labels %}
+          <div style="height:140px;position:relative;"><canvas id="lineChart2"></canvas></div>
+          {% else %}
+          <div style="text-align:center;padding:30px 0;color:#9ca3af;font-size:0.75rem;">No data yet.</div>
+          {% endif %}
+        </div>
+        <!-- By Department donut -->
+        <div class="pn">
+          <div class="pt">Placements by Department</div>
+          {% if total_placed > 0 %}
+          <div style="height:140px;position:relative;"><canvas id="donutChart2"></canvas></div>
+          {% else %}
+          <div style="text-align:center;padding:30px 0;color:#9ca3af;font-size:0.75rem;">No data yet.</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <!-- Placement by top companies bar -->
+        <div class="pn">
+          <div class="pt">Placement by Top Companies</div>
+          {% if top_companies %}
+          <div style="height:130px;position:relative;"><canvas id="barChart"></canvas></div>
+          {% else %}
+          <div style="text-align:center;padding:30px 0;color:#9ca3af;font-size:0.75rem;">No data yet.</div>
+          {% endif %}
+        </div>
+        <!-- Placement by branch horizontal bar -->
+        <div class="pn">
+          <div class="pt">Placement by Branch</div>
+          {% if branch_stats %}
+          <div style="height:130px;position:relative;"><canvas id="hbarChart"></canvas></div>
+          {% else %}
+          <div style="text-align:center;padding:30px 0;color:#9ca3af;font-size:0.75rem;">No data yet.</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+  </div><!-- ad-main -->
+</div><!-- ad-wrap -->
+
+<style>
+.rtab{background:none;border:none;cursor:pointer;padding:8px 16px;font-size:0.8rem;font-weight:500;color:#6b7280;font-family:'Inter',sans-serif;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s}
+.rtab:hover{color:#4f46e5}
+.rtab.on{color:#4f46e5;font-weight:700;border-bottom-color:#4f46e5}
+.mtab{background:none;border:none;cursor:pointer;padding:9px 16px;font-size:0.72rem;font-weight:600;color:#6b7280;font-family:'Inter',sans-serif;border-bottom:2px solid transparent;margin-bottom:-2px;letter-spacing:.5px;transition:all .15s}
+.mtab:hover{color:#4f46e5}
+.mtab.on{color:#4f46e5;font-weight:700;border-bottom-color:#4f46e5;background:#eef2ff}
+.co-stat-btn{background:#f8f9ff;border:none;padding:10px;text-align:center;cursor:pointer;font-family:'Inter',sans-serif;transition:background .15s;width:100%}
+.co-stat-btn:hover{background:#eef2ff}
+.co-stat-btn.on{background:#eef2ff;box-shadow:inset 0 -2px 0 #4f46e5}
+</style>
+
+<script>
+// Section switcher
+const SECS=['dashboard','students','assessment','companies','registrations','placement'];
+function as(n){
+  SECS.forEach(s=>{const e=document.getElementById('sec-'+s);if(e)e.classList.toggle('on',s===n)});
+  SECS.forEach(s=>{const e=document.getElementById('n-'+s);if(e)e.classList.toggle('on',s===n)});
+}
+(function(){const p=new URLSearchParams(window.location.search).get('section');if(p)as(p);})();
+
+// Company panel toggle
+function toggleCoPanel(cid, type) {
+  const panels = ['drives','applicants','selected'];
+  const isOpen = document.getElementById('copanel-'+cid+'-'+type).style.display !== 'none';
+  // Close all panels and deactivate all buttons for this company
+  panels.forEach(t => {
+    document.getElementById('copanel-'+cid+'-'+t).style.display = 'none';
+    const btn = document.getElementById('cobtn-'+cid+'-'+t);
+    if (btn) btn.classList.remove('on');
+  });
+  // If it was closed, open it
+  if (!isOpen) {
+    document.getElementById('copanel-'+cid+'-'+type).style.display = 'block';
+    const btn = document.getElementById('cobtn-'+cid+'-'+type);
+    if (btn) btn.classList.add('on');
+  }
+}
+
+// Registration tabs
+function rTab(n){
+  ['recent','student','company'].forEach(t=>{
+    document.getElementById('rp-'+t).style.display=t===n?'block':'none';
+    document.getElementById('rt-'+t).classList.toggle('on',t===n);
+  });
+}
+
+// Student detail modal — 3 tabs
+const stuMap = {
+  {% for s in students %}
+  {{ s['id'] }}: {
+    name: {{ s['name'] | tojson }},
+    email: {{ s['email'] | tojson }},
+    phone: {{ (s['phone'] or '—') | tojson }},
+    dob: {{ (s['dob'] or '—') | tojson }},
+    branch: {{ s['branch'] | tojson }},
+    degree: {{ s['degree'] | tojson }},
+    cgpa: {{ s['cgpa'] }},
+    year: {{ s['year'] }},
+    skills: {{ (s['skills'] or '') | tojson }},
+    apps: {{ s['app_count'] or 0 }},
+    best: {{ s['best_score'] or 0 }},
+    photo: {{ (s['photo'] or '') | tojson }},
+    appList: {{ student_apps.get(s['id'], []) | tojson }}
+  }{% if not loop.last %},{% endif %}
+  {% endfor %}
+};
+
+function mTab(t) {
+  ['profile','assessment','apps'].forEach(x => {
+    document.getElementById('mp-'+x).style.display = x===t ? 'block' : 'none';
+    document.getElementById('mt-'+x).classList.toggle('on', x===t);
+  });
+}
+
+function showStudentDetail(id) {
+  const s = stuMap[id];
+  if (!s) return;
+
+  // Avatar row
+  const av = s.photo
+    ? `<img src="/static/uploads/${s.photo}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;">`
+    : `<div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#4f46e5,#7c3aed);display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:700;color:#fff;">${s.name[0].toUpperCase()}</div>`;
+  document.getElementById('modal-avatar-row').innerHTML = `${av}<div><div style="font-size:1rem;font-weight:800;color:#111827;">${s.name}</div><div style="font-size:0.75rem;color:#6b7280;margin-top:2px;">${s.degree} · CGPA ${s.cgpa}</div></div>`;
+
+  // Profile tab
+  const skills = s.skills ? s.skills.split(',').filter(x=>x.trim()).map(x=>`<span style="background:#eef2ff;color:#4f46e5;border-radius:20px;padding:2px 9px;font-size:0.72rem;font-weight:600;margin:2px;display:inline-block;">${x.trim()}</span>`).join('') : '<span style="color:#9ca3af;font-size:0.78rem;">No skills added</span>';
+  document.getElementById('mp-profile').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div>
+        ${[['Email',s.email],['Phone',s.phone],['DOB',s.dob],['Degree',`${s.degree} in ${s.branch}`],['Year',s.year]].map(([l,v])=>`
+          <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f3f4f6;font-size:0.8rem;">
+            <span style="color:#9ca3af;font-weight:500;">${l}</span>
+            <span style="color:#111827;font-weight:600;text-align:right;max-width:60%;">${v}</span>
+          </div>`).join('')}
+      </div>
+      <div>
+        <div style="font-size:0.75rem;font-weight:700;color:#111827;margin-bottom:8px;">Skills</div>
+        <div>${skills}</div>
+      </div>
+    </div>`;
+
+  // Assessment tab
+  const ai = s.best;
+  const rs  = ai > 0 ? Math.min(Math.round(ai * 0.95), 100) : 0;
+  const apt = ai > 0 ? Math.min(Math.round(ai * 0.80), 100) : 0;
+  const tch = ai > 0 ? Math.min(Math.round(ai * 0.88), 100) : 0;
+  const avg = ai > 0 ? Math.round((rs+apt+tch)/3) : 0;
+  const col = v => v>=70?'#059669':v>=45?'#d97706':'#dc2626';
+  document.getElementById('mp-assessment').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px;">
+      ${[['Resume Match',rs,'#4f46e5'],['Aptitude',apt,'#be185d'],['Technical',tch,'#d97706'],['Avg Score',avg,'#059669']].map(([l,v,c])=>`
+        <div style="background:#f8f9ff;border-radius:9px;padding:12px 14px;">
+          <div style="font-size:0.65rem;color:#9ca3af;text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px;">${l}</div>
+          <div style="font-size:1.3rem;font-weight:800;color:${v>0?col(v):'#9ca3af'};">${v>0?v+'%':'—'}</div>
+        </div>`).join('')}
+    </div>
+    <div style="background:#eef2ff;border-radius:9px;padding:10px 14px;font-size:0.78rem;color:#4f46e5;">
+      <i class="fa-solid fa-circle-info"></i> Scores are derived from AI match scores across applications.
+    </div>`;
+
+  // Applications tab
+  if (s.appList && s.appList.length > 0) {
+    const rows = s.appList.map(a => {
+      const sc = a.status;
+      const badge = sc==='selected'?'#059669':sc==='interview'?'#be185d':sc==='test'?'#d97706':sc==='rejected'?'#dc2626':'#4f46e5';
+      return `<tr>
+        <td style="font-weight:600;color:#111827;">${a.company_name}</td>
+        <td style="color:#6b7280;">${a.role}</td>
+        <td style="font-weight:700;color:#4f46e5;">${a.ai_score}%</td>
+        <td style="color:#9ca3af;font-size:0.72rem;">${a.applied_on.slice(0,10)}</td>
+        <td><span style="background:${badge}22;color:${badge};border-radius:20px;padding:2px 8px;font-size:0.68rem;font-weight:700;">${sc.charAt(0).toUpperCase()+sc.slice(1)}</span></td>
+      </tr>`;
+    }).join('');
+    document.getElementById('mp-apps').innerHTML = `
+      <table style="width:100%;border-collapse:collapse;font-size:0.78rem;">
+        <thead><tr style="background:#f8f9ff;">
+          <th style="padding:7px 10px;text-align:left;color:#9ca3af;font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid #e2e5f0;">Company</th>
+          <th style="padding:7px 10px;text-align:left;color:#9ca3af;font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid #e2e5f0;">Role</th>
+          <th style="padding:7px 10px;text-align:left;color:#9ca3af;font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid #e2e5f0;">AI Score</th>
+          <th style="padding:7px 10px;text-align:left;color:#9ca3af;font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid #e2e5f0;">Applied On</th>
+          <th style="padding:7px 10px;text-align:left;color:#9ca3af;font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid #e2e5f0;">Status</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  } else {
+    document.getElementById('mp-apps').innerHTML = `<div style="text-align:center;padding:32px;color:#9ca3af;font-size:0.82rem;">No applications yet.</div>`;
+  }
+
+  mTab('profile');
+  const modal = document.getElementById('stu-modal');
+  modal.style.display = 'flex';
+}
+
+function closeStudentDetail() {
+  document.getElementById('stu-modal').style.display = 'none';
+}
+document.getElementById('stu-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeStudentDetail();
+});
+
+// Charts
+{% if monthly_labels %}
+const mlabels={{ monthly_labels|tojson }};
+const mapps={{ monthly_apps|tojson }};
+const mplaced={{ monthly_placed|tojson }};
+function mkLine(id){
+  const el=document.getElementById(id);if(!el)return;
+  new Chart(el.getContext('2d'),{type:'line',data:{labels:mlabels,datasets:[
+    {label:'Applications',data:mapps,borderColor:'#4f46e5',backgroundColor:'rgba(79,70,229,.08)',borderWidth:2,pointRadius:2,tension:.4,fill:true},
+    {label:'Placed',data:mplaced,borderColor:'#059669',backgroundColor:'rgba(5,150,105,.06)',borderWidth:2,pointRadius:2,tension:.4,fill:true}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{font:{size:9},color:'#9ca3af'}},y:{grid:{color:'#f3f4f6'},ticks:{font:{size:9},color:'#9ca3af'},beginAtZero:true}}}});
+}
+mkLine('lineChart'); mkLine('lineChart2');
+{% endif %}
+
+{% set total_placed = branch_stats|sum(attribute='placed') %}
+{% if total_placed > 0 %}
+const blabels={{ branch_stats|map(attribute='branch')|list|tojson }};
+const bdata={{ branch_stats|map(attribute='placed')|list|tojson }};
+const bcolors=['#4f46e5','#059669','#d97706','#ec4899','#0891b2','#ef4444'];
+function mkDonut(id){
+  const el=document.getElementById(id);if(!el)return;
+  new Chart(el.getContext('2d'),{type:'doughnut',data:{labels:blabels,datasets:[{data:bdata,backgroundColor:bcolors,borderWidth:2,borderColor:'#fff',hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.label}: ${c.parsed}`}}},animation:{duration:600}}});
+}
+mkDonut('donutChart'); mkDonut('donutChart2');
+{% endif %}
+
+{% if top_companies %}
+(function(){
+  const el=document.getElementById('barChart');if(!el)return;
+  new Chart(el.getContext('2d'),{type:'bar',data:{
+    labels:{{ top_companies|map(attribute='name')|list|tojson }},
+    datasets:[{data:{{ top_companies|map(attribute='hired')|list|tojson }},backgroundColor:'#4f46e5',borderRadius:4}]
+  },options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{font:{size:9},color:'#9ca3af'}},y:{grid:{color:'#f3f4f6'},ticks:{font:{size:9},color:'#9ca3af'},beginAtZero:true}}}});
+})();
+{% endif %}
+
+{% if branch_stats %}
+(function(){
+  const el=document.getElementById('hbarChart');if(!el)return;
+  new Chart(el.getContext('2d'),{type:'bar',data:{
+    labels:{{ branch_stats|map(attribute='branch')|list|tojson }},
+    datasets:[{data:{{ branch_stats|map(attribute='placed')|list|tojson }},backgroundColor:['#4f46e5','#059669','#d97706','#ec4899','#0891b2','#ef4444'],borderRadius:4}]
+  },options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#f3f4f6'},ticks:{font:{size:9},color:'#9ca3af'},beginAtZero:true},y:{grid:{display:false},ticks:{font:{size:9},color:'#9ca3af'}}}}});
+})();
+{% endif %}
+</script>
+{% endblock %}

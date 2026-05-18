@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block nav %}
+  <a href="/">Home</a>
+  <a href="/login">Login</a>
+  <a href="/register/company" class="btn-outline">Company Register</a>
+{% endblock %}
+{% block head %}
+<script>
+function extractSkills() {
+  const text = document.getElementById('resume-text').value;
+  if (!text.trim()) return;
+  const btn = document.getElementById('extract-btn');
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Extracting...';
+  btn.disabled = true;
+  $.ajax({
+    url: '/ai/extract', method: 'POST',
+    contentType: 'application/json',
+    data: JSON.stringify({text: text}),
+    success: function(d) {
+      if (d.skills.length) {
+        document.getElementById('skills-input').value = d.skills.join(', ');
+        document.getElementById('skills-result').innerHTML =
+          d.skills.map(s => `<span class="chip">${s}</span>`).join(' ');
+        document.getElementById('skills-result-box').style.display = 'block';
+      } else {
+        document.getElementById('skills-result').innerHTML = '<span style="color:var(--muted)">No known skills detected. Enter manually.</span>';
+        document.getElementById('skills-result-box').style.display = 'block';
+      }
+      btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Extract Skills';
+      btn.disabled = false;
+    }
+  });
+}
+</script>
+{% endblock %}
+{% block content %}
+<div style="max-width:820px;margin:0 auto;">
+  <div style="margin-bottom:24px;">
+    <a href="/" style="color:var(--muted);font-size:0.85rem;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+      <i class="fa-solid fa-arrow-left"></i> Back
+    </a>
+  </div>
+
+  {% if success %}
+  <div class="card" style="text-align:center;padding:60px 40px;">
+    <div style="font-size:3rem;margin-bottom:16px;">🎉</div>
+    <h2 style="font-size:1.4rem;font-weight:800;margin-bottom:8px;">Account Created!</h2>
+    <p style="color:var(--muted);margin-bottom:24px;">Your student account is ready. Sign in to explore drives.</p>
+    <a href="/login" class="btn btn-primary btn-lg"><i class="fa-solid fa-arrow-right-to-bracket"></i> Go to Login</a>
+  </div>
+  {% else %}
+  <div class="card">
+    <div style="text-align:center;margin-bottom:32px;">
+      <div style="width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,var(--primary),var(--purple));display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:1.5rem;color:#fff;">
+        <i class="fa-solid fa-user-graduate"></i>
+      </div>
+      <h2 style="font-size:1.4rem;font-weight:800;">Student Registration</h2>
+      <p style="color:var(--muted);font-size:0.85rem;margin-top:4px;">Create your profile to start applying for campus drives</p>
+    </div>
+
+    {% if error %}<div class="alert alert-danger"><i class="fa-solid fa-circle-exclamation"></i> {{ error }}</div>{% endif %}
+
+    <form action="/register/student" method="POST">
+      <div class="g2">
+        <div>
+          <p class="section-label">Personal Information</p>
+          <div class="form-group">
+            <label>Full Name</label>
+            <input type="text" name="name" class="form-control" placeholder="Sahithi Reddy" required>
+          </div>
+          <div class="form-group">
+            <label>Email Address</label>
+            <input type="email" name="email" class="form-control" placeholder="sahithi@college.edu" required>
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" name="pwd" class="form-control" placeholder="Choose a strong password" required>
+          </div>
+          <div class="form-group">
+            <label>Phone Number</label>
+            <input type="text" name="phone" class="form-control" placeholder="10-digit number" required>
+          </div>
+          <div class="form-group">
+            <label>Date of Birth</label>
+            <input type="date" name="dob" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label>Bio (optional)</label>
+            <textarea name="bio" class="form-control" placeholder="A short intro about yourself..."></textarea>
+          </div>
+        </div>
+        <div>
+          <p class="section-label">Academic Information</p>
+          <div class="form-group">
+            <label>Degree</label>
+            <select name="degree" class="form-control">
+              <option>B.Tech</option><option>M.Tech</option>
+              <option>B.E</option><option>M.E</option>
+              <option>BCA</option><option>MCA</option><option>MSC</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Branch</label>
+            <select name="branch" class="form-control">
+              <option>CSE</option><option>IT</option><option>ECE</option>
+              <option>EEE</option><option>Mechanical</option><option>Civil</option><option>Chemical</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Year of Passing</label>
+            <input type="number" name="year" class="form-control" placeholder="e.g. 2025" required>
+          </div>
+          <div class="g2" style="gap:12px;">
+            <div class="form-group">
+              <label>CGPA</label>
+              <input type="number" step="0.01" name="cgpa" class="form-control" placeholder="e.g. 8.5" required>
+            </div>
+            <div class="form-group">
+              <label>12th %</label>
+              <input type="number" step="0.01" name="p12" class="form-control" placeholder="e.g. 85" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>10th %</label>
+            <input type="number" step="0.01" name="p10" class="form-control" placeholder="e.g. 90" required>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI Skill Extractor -->
+      <hr class="div">
+      <div style="background:linear-gradient(135deg,var(--primary-l),var(--purple-l));border:1px solid var(--primary-m);border-radius:12px;padding:20px;margin-bottom:20px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+          <div style="width:32px;height:32px;border-radius:8px;background:var(--primary);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.9rem;">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+          </div>
+          <div>
+            <h4 style="font-size:0.9rem;font-weight:700;color:var(--text);">AI Skill Extractor</h4>
+            <p style="font-size:0.78rem;color:var(--muted);">Paste your resume text — AI will auto-detect your skills</p>
+          </div>
+        </div>
+        <textarea id="resume-text" class="form-control" rows="4" placeholder="Paste your resume or experience text here..."></textarea>
+        <button type="button" id="extract-btn" class="btn btn-primary btn-sm" style="margin-top:10px;" onclick="extractSkills()">
+          <i class="fa-solid fa-wand-magic-sparkles"></i> Extract Skills
+        </button>
+        <div id="skills-result-box" style="display:none;margin-top:12px;">
+          <p style="font-size:0.78rem;font-weight:600;color:var(--text2);margin-bottom:8px;">Detected Skills:</p>
+          <div id="skills-result" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Skills (comma-separated)</label>
+        <input type="text" name="skills" id="skills-input" class="form-control" placeholder="Python, React, Machine Learning, SQL...">
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block btn-lg">
+        <i class="fa-solid fa-user-plus"></i> Create Student Account
+      </button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

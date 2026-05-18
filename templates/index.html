@@ -1,0 +1,359 @@
+{% extends "base.html" %}
+{% block head %}
+<style>
+  body { background: #eef0fb !important; }
+
+  /* Pull the hero out of the .page padding constraints */
+  .page { padding: 0 !important; max-width: 100% !important; }
+
+  /* ── Hero ── */
+  .hero {
+    display: grid;
+    grid-template-columns: 1fr 1.1fr 420px;
+    gap: 48px;
+    align-items: center;
+    min-height: calc(100vh - 70px);
+    padding: 48px 64px;
+    max-width: 1500px;
+    margin: 0 auto;
+    box-sizing: border-box;
+  }
+
+  /* LEFT */
+  .hero-left h1 {
+    font-size: 3.2rem;
+    font-weight: 900;
+    line-height: 1.12;
+    color: #111827;
+    margin-bottom: 20px;
+    letter-spacing: -1px;
+  }
+  .hero-left h1 .gradient {
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero-left p {
+    color: #6b7280;
+    font-size: 1rem;
+    line-height: 1.8;
+    max-width: 400px;
+    margin-bottom: 36px;
+  }
+  .hero-btns {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-bottom: 48px;
+  }
+  .hero-btns .btn-primary-hero {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: #4f46e5; color: #fff;
+    padding: 14px 28px; border-radius: 10px;
+    font-size: 0.95rem; font-weight: 600;
+    text-decoration: none; border: none; cursor: pointer;
+    transition: background 0.15s, box-shadow 0.15s;
+  }
+  .hero-btns .btn-primary-hero:hover {
+    background: #4338ca;
+    box-shadow: 0 4px 16px rgba(79,70,229,0.35);
+  }
+  .hero-btns .btn-ghost-hero {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: #fff; color: #374151;
+    padding: 14px 28px; border-radius: 10px;
+    font-size: 0.95rem; font-weight: 600;
+    text-decoration: none;
+    border: 1.5px solid #e2e5f0;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .hero-btns .btn-ghost-hero:hover { border-color: #4f46e5; background: #eef2ff; }
+
+  .hero-stats {
+    display: flex;
+    gap: 40px;
+    padding-top: 32px;
+    border-top: 1px solid #e2e5f0;
+  }
+  .hero-stats .snum {
+    font-size: 2rem;
+    font-weight: 900;
+    color: #111827;
+    line-height: 1;
+  }
+  .hero-stats .snum.accent { color: #4f46e5; }
+  .hero-stats .slbl {
+    font-size: 0.82rem;
+    color: #6b7280;
+    font-weight: 500;
+    margin-top: 5px;
+  }
+
+  /* CENTER */
+  .hero-img {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .hero-img img {
+    width: 100%;
+    max-width: 520px;
+    height: auto;
+    object-fit: contain;
+  }
+
+  /* RIGHT — login card */
+  .login-card {
+    background: #fff;
+    border: 1px solid #e2e5f0;
+    border-radius: 20px;
+    padding: 36px 32px;
+    box-shadow: 0 8px 40px rgba(79,70,229,0.10), 0 2px 8px rgba(0,0,0,0.05);
+  }
+  .login-card .lc-icon {
+    width: 56px; height: 56px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 14px;
+    font-size: 1.4rem; color: #fff;
+  }
+  .login-card h2 {
+    font-size: 1.35rem; font-weight: 800;
+    color: #111827; text-align: center; margin-bottom: 4px;
+  }
+  .login-card .lc-sub {
+    font-size: 0.85rem; color: #6b7280;
+    text-align: center; margin-bottom: 28px;
+  }
+  .login-card .fg { margin-bottom: 16px; }
+  .login-card .fg label {
+    display: block; font-size: 0.8rem; font-weight: 600;
+    color: #374151; margin-bottom: 6px;
+  }
+  .login-card .fc {
+    width: 100%; padding: 11px 14px;
+    border: 1.5px solid #d0d5e8; border-radius: 9px;
+    font-size: 0.875rem; color: #111827;
+    background: #fff; outline: none;
+    font-family: 'Inter', sans-serif;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    box-sizing: border-box;
+  }
+  .login-card .fc:focus {
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79,70,229,0.12);
+  }
+  .login-card .fc::placeholder { color: #9ca3af; }
+  .login-card .btn-signin {
+    width: 100%; padding: 13px;
+    background: #4f46e5; color: #fff;
+    border: none; border-radius: 10px;
+    font-size: 0.95rem; font-weight: 600;
+    cursor: pointer; margin-top: 6px;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    font-family: 'Inter', sans-serif;
+    transition: background 0.15s, box-shadow 0.15s;
+  }
+  .login-card .btn-signin:hover {
+    background: #4338ca;
+    box-shadow: 0 4px 14px rgba(79,70,229,0.3);
+  }
+  .login-card .lc-links {
+    text-align: center; font-size: 0.82rem;
+    color: #6b7280; margin-top: 18px;
+  }
+  .login-card .lc-links a {
+    color: #4f46e5; font-weight: 600; text-decoration: none;
+  }
+  .login-card .demo-box {
+    margin-top: 16px;
+    background: #f0f2ff;
+    border-radius: 9px;
+    padding: 12px 14px;
+  }
+  .login-card .demo-box .dlbl {
+    font-size: 0.7rem; font-weight: 700;
+    letter-spacing: 0.8px; text-transform: uppercase;
+    color: #9ca3af; margin-bottom: 5px;
+  }
+  .login-card .demo-box p {
+    font-size: 0.82rem; color: #6b7280;
+  }
+
+  /* Features strip */
+  .features {
+    padding: 60px 64px;
+    max-width: 1500px;
+    margin: 0 auto;
+    border-top: 1px solid #e2e5f0;
+  }
+  .features .feat-label {
+    text-align: center;
+    font-size: 0.72rem; font-weight: 700;
+    letter-spacing: 1.5px; text-transform: uppercase;
+    color: #9ca3af; margin-bottom: 36px;
+  }
+  .feat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+  }
+  .feat-card {
+    text-align: center;
+    padding: 28px 20px;
+    background: #fff;
+    border-radius: 16px;
+    border: 1px solid #e2e5f0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .feat-card .ficon {
+    width: 52px; height: 52px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 16px; font-size: 1.3rem;
+  }
+  .feat-card h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 8px; }
+  .feat-card p  { font-size: 0.84rem; color: #6b7280; line-height: 1.65; }
+
+  /* Responsive */
+  @media (max-width: 1200px) {
+    .hero { grid-template-columns: 1fr 420px; gap: 40px; padding: 40px 40px; }
+    .hero-img { display: none; }
+    .feat-grid { grid-template-columns: repeat(2,1fr); }
+  }
+  @media (max-width: 720px) {
+    .hero { grid-template-columns: 1fr; padding: 32px 24px; }
+    .feat-grid { grid-template-columns: 1fr; }
+    .features { padding: 40px 24px; }
+  }
+</style>
+{% endblock %}
+
+{% block nav %}
+  <a href="/login">Login</a>
+{% endblock %}
+
+{% block content %}
+
+<!-- ── Hero ── -->
+<div class="hero">
+
+  <!-- LEFT -->
+  <div class="hero-left">
+    <h1>
+      Campus Hiring,<br>
+      <span class="gradient">Reimagined with AI.</span>
+    </h1>
+    <p>SmartHire AI connects students with top companies through intelligent matching, automated pipelines, and real-time analytics — all in one platform.</p>
+
+    <div class="hero-btns">
+      <a href="/login" class="btn-primary-hero">
+        <i class="fa-solid fa-arrow-right-to-bracket"></i> Sign In
+      </a>
+    </div>
+
+    <div class="hero-stats">
+      <div>
+        <div class="snum">{{ stats.students }}+</div>
+        <div class="slbl">Students</div>
+      </div>
+      <div>
+        <div class="snum">{{ stats.companies }}+</div>
+        <div class="slbl">Companies</div>
+      </div>
+      <div>
+        <div class="snum">{{ stats.drives }}</div>
+        <div class="slbl">Active Drives</div>
+      </div>
+      <div>
+        <div class="snum accent">{{ stats.placed }}</div>
+        <div class="slbl">Students Placed</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CENTER illustration -->
+  <div class="hero-img">
+    <img src="{{ url_for('static', filename='hero.png') }}"
+         alt="SmartHire AI campus hiring illustration">
+  </div>
+
+  <!-- RIGHT login card -->
+  <div class="login-card">
+    <div style="text-align:center;">
+      <div class="lc-icon"><i class="fa-solid fa-bolt"></i></div>
+      <h2>Welcome back</h2>
+      <p class="lc-sub">Sign in to your SmartHire account</p>
+    </div>
+
+    <form action="/login" method="POST">
+      <div class="fg">
+        <label>Email Address</label>
+        <input type="email" name="email" class="fc" placeholder="you@example.com" required>
+      </div>
+      <div class="fg">
+        <label>Password</label>
+        <input type="password" name="pwd" class="fc" placeholder="••••••••" required>
+      </div>
+      <div class="fg">
+        <label>Login As</label>
+        <select name="role" class="fc">
+          <option value="student">🎓 Student</option>
+          <option value="company">🏢 Company / Recruiter</option>
+          <option value="admin">🛡️ Admin</option>
+        </select>
+      </div>
+      <button type="submit" class="btn-signin">
+        <i class="fa-solid fa-arrow-right-to-bracket"></i> Sign In
+      </button>
+    </form>
+
+    <p class="lc-links">
+      Contact admin to register your account.
+    </p>
+
+    <div class="demo-box">
+      <p class="dlbl">Demo Admin</p>
+      <p>admin@smarthire.ai &nbsp;/&nbsp; admin123</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Features ── -->
+<div class="features">
+  <p class="feat-label">What makes SmartHire different</p>
+  <div class="feat-grid">
+    <div class="feat-card">
+      <div class="ficon" style="background:#eef2ff;color:#4f46e5;">
+        <i class="fa-solid fa-brain"></i>
+      </div>
+      <h4>AI Match Score</h4>
+      <p>Instantly scores student-job fit using skills, CGPA, and degree.</p>
+    </div>
+    <div class="feat-card">
+      <div class="ficon" style="background:#d1fae5;color:#059669;">
+        <i class="fa-solid fa-file-lines"></i>
+      </div>
+      <h4>Skill Extractor</h4>
+      <p>Paste your resume — AI auto-detects your skills instantly.</p>
+    </div>
+    <div class="feat-card">
+      <div class="ficon" style="background:#fef3c7;color:#d97706;">
+        <i class="fa-solid fa-comments"></i>
+      </div>
+      <h4>Interview Prep</h4>
+      <p>AI generates role-specific technical, HR, and aptitude questions.</p>
+    </div>
+    <div class="feat-card">
+      <div class="ficon" style="background:#ede9fe;color:#7c3aed;">
+        <i class="fa-solid fa-chart-line"></i>
+      </div>
+      <h4>Live Analytics</h4>
+      <p>Real-time placement stats, branch-wise reports, and hiring trends.</p>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block nav %}
+  <a href="/">Home</a>
+  <a href="/register/student" class="btn-outline">Student Register</a>
+  <a href="/register/company" class="btn-nav">Company Register</a>
+{% endblock %}
+{% block content %}
+<div style="max-width:440px;margin:60px auto;">
+  <div class="card" style="box-shadow:var(--shadow-lg);">
+    <div style="text-align:center;margin-bottom:28px;">
+      <div style="width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,var(--primary),var(--purple));display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:1.5rem;color:#fff;">
+        <i class="fa-solid fa-bolt"></i>
+      </div>
+      <h2 style="font-size:1.3rem;font-weight:800;">Sign In</h2>
+      <p style="color:var(--muted);font-size:0.85rem;margin-top:4px;">Access your SmartHire dashboard</p>
+    </div>
+
+    {% if error %}
+    <div class="alert alert-danger"><i class="fa-solid fa-circle-exclamation"></i> {{ error }}</div>
+    {% endif %}
+
+    <form action="/login" method="POST">
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" name="email" class="form-control" placeholder="you@example.com" required>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" name="pwd" class="form-control" placeholder="••••••••" required>
+      </div>
+      <div class="form-group">
+        <label>Login As</label>
+        <select name="role" class="form-control">
+          <option value="student">🎓 Student</option>
+          <option value="company">🏢 Company / Recruiter</option>
+          <option value="admin">🛡️ Admin</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block btn-lg" style="margin-top:4px;">
+        <i class="fa-solid fa-arrow-right-to-bracket"></i> Sign In
+      </button>
+    </form>
+    <hr class="div">
+    <p style="text-align:center;font-size:0.83rem;color:var(--muted);">
+      New student? <a href="/register/student" style="color:var(--primary);font-weight:600;">Register →</a>
+      &nbsp;·&nbsp;
+      New company? <a href="/register/company" style="color:var(--primary);font-weight:600;">Register →</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

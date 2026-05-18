@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block nav %}
+  <a href="/">Home</a>
+  <a href="/login">Login</a>
+  <a href="/register/student" class="btn-outline">Student Register</a>
+{% endblock %}
+{% block content %}
+<div style="max-width:760px;margin:0 auto;">
+  <div style="margin-bottom:24px;">
+    <a href="/" style="color:var(--muted);font-size:0.85rem;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+      <i class="fa-solid fa-arrow-left"></i> Back
+    </a>
+  </div>
+
+  {% if success %}
+  <div class="card" style="text-align:center;padding:60px 40px;">
+    <div style="font-size:3rem;margin-bottom:16px;">🏢</div>
+    <h2 style="font-size:1.4rem;font-weight:800;margin-bottom:8px;">Company Registered!</h2>
+    <p style="color:var(--muted);margin-bottom:24px;">Your company account is ready. Sign in to post drives.</p>
+    <a href="/login" class="btn btn-primary btn-lg"><i class="fa-solid fa-arrow-right-to-bracket"></i> Go to Login</a>
+  </div>
+  {% else %}
+  <div class="card">
+    <div style="text-align:center;margin-bottom:32px;">
+      <div style="width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,#f97316,#fb923c);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:1.5rem;color:#fff;">
+        <i class="fa-solid fa-building"></i>
+      </div>
+      <h2 style="font-size:1.4rem;font-weight:800;">Company Registration</h2>
+      <p style="color:var(--muted);font-size:0.85rem;margin-top:4px;">Register to post hiring drives and find top talent</p>
+    </div>
+
+    {% if error %}<div class="alert alert-danger"><i class="fa-solid fa-circle-exclamation"></i> {{ error }}</div>{% endif %}
+
+    <form action="/register/company" method="POST">
+      <div class="g2">
+        <div>
+          <p class="section-label">Company Details</p>
+          <div class="form-group">
+            <label>Company Name</label>
+            <input type="text" name="name" class="form-control" placeholder="Acme Technologies" required>
+          </div>
+          <div class="form-group">
+            <label>Email Address</label>
+            <input type="email" name="email" class="form-control" placeholder="hr@company.com" required>
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" name="pwd" class="form-control" placeholder="Choose a strong password" required>
+          </div>
+          <div class="form-group">
+            <label>Phone</label>
+            <input type="text" name="phone" class="form-control" placeholder="Contact number" required>
+          </div>
+          <div class="form-group">
+            <label>Location</label>
+            <input type="text" name="location" class="form-control" placeholder="e.g. Bangalore, India" required>
+          </div>
+        </div>
+        <div>
+          <p class="section-label">Company Profile</p>
+          <div class="form-group">
+            <label>Industry</label>
+            <select name="industry" class="form-control">
+              <option>Information Technology</option>
+              <option>Software Product</option>
+              <option>Consulting</option>
+              <option>Finance & Banking</option>
+              <option>E-Commerce</option>
+              <option>Healthcare</option>
+              <option>Manufacturing</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Website (optional)</label>
+            <input type="text" name="website" class="form-control" placeholder="https://company.com">
+          </div>
+          <div class="form-group">
+            <label>About Company</label>
+            <textarea name="about" class="form-control" rows="5" placeholder="Brief description of your company, culture, and what you're looking for..."></textarea>
+          </div>
+        </div>
+      </div>
+      <hr class="div">
+      <button type="submit" class="btn btn-primary btn-block btn-lg">
+        <i class="fa-solid fa-building-circle-check"></i> Register Company
+      </button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
