@@ -1,44 +1,49 @@
 {% extends "base.html" %}
 {% block nav %}
   <a href="/">Home</a>
-  <a href="/register/student" class="btn-outline">Student Register</a>
-  <a href="/register/company" class="btn-nav">Company Register</a>
+  <a href="/college/register" class="btn-outline">Register College</a>
 {% endblock %}
 {% block content %}
-<div style="max-width:440px;margin:60px auto;">
+<div style="max-width:460px;margin:48px auto;">
   <div class="card" style="box-shadow:var(--shadow-lg);">
-    <div style="text-align:center;margin-bottom:28px;">
-      <div style="width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,var(--primary),var(--purple));display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:1.5rem;color:#fff;">
+
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="width:56px;height:56px;border-radius:16px;
+                  background:linear-gradient(135deg,var(--primary),var(--purple));
+                  display:flex;align-items:center;justify-content:center;
+                  margin:0 auto 12px;font-size:1.5rem;color:#fff;">
         <i class="fa-solid fa-bolt"></i>
       </div>
-      <h2 style="font-size:1.3rem;font-weight:800;">Sign In</h2>
-      <p style="color:var(--muted);font-size:0.85rem;margin-top:4px;">Access your SmartHire dashboard</p>
+      <h2 style="font-size:1.25rem;font-weight:800;">Sign In to SmartHire AI</h2>
+      <p style="color:var(--muted);font-size:0.83rem;margin-top:4px;">Campus Hiring Management System</p>
     </div>
 
     {% if error %}
     <div class="alert alert-danger"><i class="fa-solid fa-circle-exclamation"></i> {{ error }}</div>
     {% endif %}
 
-    <!-- GitHub OAuth — quick one-click login for students -->
-    <a href="/auth/github"
-       style="display:flex;align-items:center;justify-content:center;gap:10px;
-              background:#24292f;color:#fff;border-radius:10px;padding:13px;
-              font-size:0.92rem;font-weight:700;text-decoration:none;margin-bottom:18px;
-              transition:background 0.15s;border:2px solid #24292f;"
-       onmouseover="this.style.background='#3c4449'" onmouseout="this.style.background='#24292f'">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-        <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
-      </svg>
-      Continue with GitHub
-    </a>
+    <form action="/login" method="POST" id="login-form">
 
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
-      <div style="flex:1;height:1px;background:var(--border);"></div>
-      <span style="font-size:0.78rem;color:var(--muted);font-weight:500;">or sign in with email</span>
-      <div style="flex:1;height:1px;background:var(--border);"></div>
-    </div>
+      <!-- Role selector — changes form dynamically -->
+      <div class="form-group">
+        <label>I am a</label>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+          {% for r, label, icon in [('student','Student','fa-user-graduate'),('company','Company','fa-building'),('admin','College Admin','fa-user-shield')] %}
+          <label style="cursor:pointer;">
+            <input type="radio" name="role" value="{{ r }}" style="display:none;"
+                   onchange="roleChanged('{{ r }}')" {% if loop.first %}checked{% endif %}>
+            <div class="role-btn" id="rbtn-{{ r }}" style="
+              text-align:center;padding:10px 6px;border-radius:10px;border:2px solid var(--border);
+              font-size:0.75rem;font-weight:600;color:var(--muted);transition:all .15s;
+              {% if loop.first %}border-color:var(--primary);background:var(--primary-l);color:var(--primary);{% endif %}">
+              <i class="fa-solid {{ icon }}" style="display:block;font-size:1.1rem;margin-bottom:4px;"></i>
+              {{ label }}
+            </div>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
 
-    <form action="/login" method="POST">
       <div class="form-group">
         <label>Email Address</label>
         <input type="email" name="email" class="form-control" placeholder="you@example.com" required>
@@ -47,24 +52,48 @@
         <label>Password</label>
         <input type="password" name="pwd" class="form-control" placeholder="••••••••" required>
       </div>
-      <div class="form-group">
-        <label>Login As</label>
-        <select name="role" class="form-control">
-          <option value="student">🎓 Student</option>
-          <option value="company">🏢 Company / Recruiter</option>
-          <option value="admin">🛡️ Admin</option>
-        </select>
-      </div>
+
       <button type="submit" class="btn btn-primary btn-block btn-lg" style="margin-top:4px;">
         <i class="fa-solid fa-arrow-right-to-bracket"></i> Sign In
       </button>
     </form>
+
     <hr class="div">
-    <p style="text-align:center;font-size:0.83rem;color:var(--muted);">
-      New student? <a href="/register/student" style="color:var(--primary);font-weight:600;">Register →</a>
-      &nbsp;·&nbsp;
-      New company? <a href="/register/company" style="color:var(--primary);font-weight:600;">Register →</a>
-    </p>
+
+    <div style="text-align:center;font-size:0.82rem;color:var(--muted);">
+      <p style="margin-bottom:8px;">
+        New college? <a href="/college/register" style="color:var(--primary);font-weight:600;">Register your college →</a>
+      </p>
+      <p>
+        Super Admin? <a href="/superadmin/login" style="color:var(--muted);font-weight:500;font-size:0.78rem;">Sign in here</a>
+      </p>
+    </div>
   </div>
 </div>
+
+<style>
+.role-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-l); }
+</style>
+<script>
+function roleChanged(r) {
+  ['student','company','admin'].forEach(function(x) {
+    var el = document.getElementById('rbtn-' + x);
+    if (x === r) {
+      el.style.borderColor = 'var(--primary)';
+      el.style.background  = 'var(--primary-l)';
+      el.style.color       = 'var(--primary)';
+    } else {
+      el.style.borderColor = 'var(--border)';
+      el.style.background  = 'transparent';
+      el.style.color       = 'var(--muted)';
+    }
+  });
+}
+// Pre-select based on URL param
+var urlRole = new URLSearchParams(window.location.search).get('role');
+if (urlRole) {
+  var el = document.querySelector('input[name="role"][value="' + urlRole + '"]');
+  if (el) { el.checked = true; roleChanged(urlRole); }
+}
+</script>
 {% endblock %}

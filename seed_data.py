@@ -17,16 +17,45 @@ mdb       = client["smarthire"]
 
 # ── Ensure indexes ────────────────────────────────────────────────────────────
 def ensure_indexes():
-    mdb.students.create_index("email", unique=True)
-    mdb.companies.create_index("email", unique=True)
+    mdb.colleges.create_index("email", unique=True)
+    mdb.colleges.create_index("code",  unique=True)
+    mdb.students.create_index([("email",1),("college_id",1)], unique=True)
+    mdb.companies.create_index([("email",1),("college_id",1)], unique=True)
     mdb.applications.create_index(
         [("student_id", ASCENDING), ("drive_id", ASCENDING)], unique=True
     )
+    mdb.drives.create_index("college_id")
+    mdb.students.create_index("college_id")
+    mdb.companies.create_index("college_id")
+
+# ── Default demo college ───────────────────────────────────────────────────────
+DEMO_COLLEGE = {
+    "name":       "Woxsen University",
+    "code":       "WU2026",
+    "email":      "admin@woxsen.edu.in",
+    "pwd":        "woxsen@123",
+    "phone":      "040-23456789",
+    "location":   "Hyderabad, Telangana",
+    "university": "Woxsen University",
+    "active":     True,
+    "created":    "2025-10-01 09:00:00",
+}
+
+def get_or_create_college():
+    """Return the demo college _id string, creating it if needed."""
+    existing = mdb.colleges.find_one({"code": DEMO_COLLEGE["code"]})
+    if existing:
+        print(f"  ⏭  College already exists: {DEMO_COLLEGE['name']}")
+        return str(existing["_id"])
+    result = mdb.colleges.insert_one(DEMO_COLLEGE.copy())
+    print(f"  ✅ Created college: {DEMO_COLLEGE['name']} (admin: {DEMO_COLLEGE['email']} / {DEMO_COLLEGE['pwd']})")
+    return str(result.inserted_id)
 
 # ── Check existing data ───────────────────────────────────────────────────────
 def check_existing():
     print("=" * 55)
     print("EXISTING DATA")
+    print(f"  Colleges    : {mdb.colleges.count_documents({})}")
     print(f"  Students    : {mdb.students.count_documents({})}")
     print(f"  Companies   : {mdb.companies.count_documents({})}")
     print(f"  Drives      : {mdb.drives.count_documents({})}")
@@ -220,12 +249,13 @@ def ai_match_score(student, drive):
     return round(score, 1)
 
 # ── Insert helpers ────────────────────────────────────────────────────────────
-def insert_companies():
+def insert_companies(college_id):
     inserted, skipped = [], []
     for name, email, pwd, phone, location, industry, website, about, created in COMPANIES:
-        if mdb.companies.find_one({"email": email}):
+        if mdb.companies.find_one({"email": email, "college_id": college_id}):
             skipped.append(name); continue
         mdb.companies.insert_one({
+            "college_id": college_id,
             "name": name, "email": email, "pwd": pwd, "phone": phone,
             "location": location, "industry": industry,
             "website": website, "about": about, "created": created
@@ -233,13 +263,14 @@ def insert_companies():
         inserted.append(name)
     return inserted, skipped
 
-def insert_students():
+def insert_students(college_id):
     inserted, skipped = [], []
     for (name, email, pwd, phone, dob, branch, degree, year,
          cgpa, p12, p10, skills, bio, gender, location, created) in STUDENTS:
-        if mdb.students.find_one({"email": email}):
+        if mdb.students.find_one({"email": email, "college_id": college_id}):
             skipped.append(name); continue
         mdb.students.insert_one({
+            "college_id": college_id,
             "name": name, "email": email, "pwd": pwd, "phone": phone,
             "dob": dob, "branch": branch, "degree": degree, "year": year,
             "cgpa": cgpa, "p12": p12, "p10": p10,
@@ -250,19 +281,20 @@ def insert_students():
         inserted.append(name)
     return inserted, skipped
 
-def insert_drives():
+def insert_drives(college_id):
     inserted, skipped = [], []
     for company_name, drive_list in DRIVES_TEMPLATE.items():
-        company = mdb.companies.find_one({"name": company_name})
+        company = mdb.companies.find_one({"name": company_name, "college_id": college_id})
         if not company:
             print(f"  [WARN] Company '{company_name}' not found, skipping drives.")
             continue
         cid_str = str(company["_id"])
         for (title, role, loc, salary, deadline, desc,
              req_cgpa, req_degree, req_skills, req_year, status, created) in drive_list:
-            if mdb.drives.find_one({"company_id": cid_str, "title": title}):
+            if mdb.drives.find_one({"company_id": cid_str, "title": title, "college_id": college_id}):
                 skipped.append(title); continue
             mdb.drives.insert_one({
+                "college_id": college_id,
                 "company_id": cid_str, "title": title, "role": role,
                 "location": loc, "salary": salary, "deadline": deadline,
                 "description": desc, "req_cgpa": req_cgpa,
@@ -272,11 +304,11 @@ def insert_drives():
             inserted.append(f"{company_name} – {title}")
     return inserted, skipped
 
-def insert_applications():
+def insert_applications(college_id):
     inserted = 0
     skipped  = 0
-    all_students = list(mdb.students.find())
-    all_drives   = list(mdb.drives.find())
+    all_students = list(mdb.students.find({"college_id": college_id}))
+    all_drives   = list(mdb.drives.find({"college_id": college_id}))
     if not all_students or not all_drives:
         print("  [WARN] No students or drives found – skipping applications.")
         return 0, 0
@@ -291,9 +323,9 @@ def insert_applications():
     random.seed(42)
 
     for student in all_students:
-        sid_str    = str(student["_id"])
-        num_apps   = random.randint(2, 4)
-        chosen     = random.sample(all_drives, min(num_apps, len(all_drives)))
+        sid_str  = str(student["_id"])
+        num_apps = random.randint(2, 4)
+        chosen   = random.sample(all_drives, min(num_apps, len(all_drives)))
         for drive in chosen:
             did_str = str(drive["_id"])
             if mdb.applications.find_one({"student_id": sid_str, "drive_id": did_str}):
@@ -320,23 +352,27 @@ def main():
     print("\n📊 STEP 1 – Checking existing data...")
     check_existing()
 
-    print("\n🏢 STEP 2 – Inserting companies...")
-    ins_co, skip_co = insert_companies()
+    print("\n🏫 STEP 2 – Setting up demo college...")
+    college_id = get_or_create_college()
+    print(f"  College ID: {college_id}")
+
+    print("\n🏢 STEP 3 – Inserting companies...")
+    ins_co, skip_co = insert_companies(college_id)
     for n in ins_co:  print(f"  ✅ Added   : {n}")
     for n in skip_co: print(f"  ⏭  Skipped : {n} (already exists)")
 
-    print("\n🎓 STEP 3 – Inserting students...")
-    ins_st, skip_st = insert_students()
+    print("\n🎓 STEP 4 – Inserting students...")
+    ins_st, skip_st = insert_students(college_id)
     for n in ins_st:  print(f"  ✅ Added   : {n}")
     for n in skip_st: print(f"  ⏭  Skipped : {n} (already exists)")
 
-    print("\n📋 STEP 4 – Inserting drives...")
-    ins_dr, skip_dr = insert_drives()
+    print("\n📋 STEP 5 – Inserting drives...")
+    ins_dr, skip_dr = insert_drives(college_id)
     for n in ins_dr:  print(f"  ✅ Added   : {n}")
     for n in skip_dr: print(f"  ⏭  Skipped : {n} (already exists)")
 
-    print("\n📝 STEP 5 – Inserting applications...")
-    ins_ap, skip_ap = insert_applications()
+    print("\n📝 STEP 6 – Inserting applications...")
+    ins_ap, skip_ap = insert_applications(college_id)
     print(f"  ✅ Added   : {ins_ap} applications")
     print(f"  ⏭  Skipped : {skip_ap} (already exist)")
 
@@ -354,16 +390,12 @@ def main():
     if scores:
         print(f"\nAI score range:  Min={min(scores)}  Max={max(scores)}  Avg={round(sum(scores)/len(scores),1)}")
 
-    from collections import defaultdict
-    monthly = defaultdict(int)
-    for a in mdb.applications.find({}, {"applied_on": 1}):
-        m = (a.get("applied_on") or "")[:7]
-        if m: monthly[m] += 1
-    print("\nApplications per month:")
-    for m in sorted(monthly)[:12]:
-        print(f"  {m}: {monthly[m]} applications")
-
-    print("\n✅ Seeding complete!")
+    print(f"\n✅ Seeding complete!")
+    print(f"\n📋 Demo Login Credentials:")
+    print(f"  Super Admin : superadmin@smarthire.ai / super@123  →  /superadmin/login")
+    print(f"  College Admin: {DEMO_COLLEGE['email']} / {DEMO_COLLEGE['pwd']}  →  /login (role: College Admin)")
+    print(f"  Student      : arjun.sharma@student.edu / pass@123")
+    print(f"  Company      : hr@tcs.com / tcs@123")
 
 if __name__ == "__main__":
     main()

@@ -8,20 +8,22 @@ from pymongo.errors import DuplicateKeyError
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 
-load_dotenv()  # loads .env from the project root
+load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "smarthire_ai_secret_2024")
 
 # ── API Keys ──────────────────────────────────────────────────────────────────
-GEMINI_API_KEY      = os.environ.get("GEMINI_API_KEY", "")
-ELEVENLABS_API_KEY  = os.environ.get("ELEVENLABS_API_KEY", "")
-ELEVENLABS_VOICE_ID = os.environ.get("ELEVENLABS_VOICE_ID", "EXAVITQu4vr4xnSDxMaL")
-SARVAM_API_KEY      = os.environ.get("SARVAM_API_KEY", "")
-GITHUB_CLIENT_ID    = os.environ.get("GITHUB_CLIENT_ID", "")
-GITHUB_CLIENT_SECRET= os.environ.get("GITHUB_CLIENT_SECRET", "")
+GEMINI_API_KEY       = os.environ.get("GEMINI_API_KEY", "")
+ELEVENLABS_API_KEY   = os.environ.get("ELEVENLABS_API_KEY", "")
+ELEVENLABS_VOICE_ID  = os.environ.get("ELEVENLABS_VOICE_ID", "EXAVITQu4vr4xnSDxMaL")
+SARVAM_API_KEY       = os.environ.get("SARVAM_API_KEY", "")
+GITHUB_CLIENT_ID     = os.environ.get("GITHUB_CLIENT_ID", "")
+GITHUB_CLIENT_SECRET = os.environ.get("GITHUB_CLIENT_SECRET", "")
+SUPER_ADMIN_EMAIL    = os.environ.get("SUPER_ADMIN_EMAIL", "superadmin@smarthire.ai")
+SUPER_ADMIN_PWD      = os.environ.get("SUPER_ADMIN_PWD", "super@123")
 
-# ─── MongoDB connection ────────────────────────────────────────────────────────
+# ─── MongoDB ──────────────────────────────────────────────────────────────────
 MONGO_URI = os.environ.get("MONGO_URI", "mongodb://localhost:27017")
 _client   = MongoClient(MONGO_URI)
 mdb       = _client["smarthire"]
@@ -33,24 +35,28 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 def oid(val):
-    """Safely convert a string / ObjectId to ObjectId."""
-    if isinstance(val, ObjectId):
-        return val
-    try:
-        return ObjectId(str(val))
-    except (InvalidId, TypeError):
-        return None
+    if isinstance(val, ObjectId): return val
+    try:    return ObjectId(str(val))
+    except: return None
 
 def fix(doc):
-    """Convert _id ObjectId → str 'id' so templates keep using doc['id']."""
-    if doc is None:
-        return None
+    if doc is None: return None
     d = dict(doc)
     d["id"] = str(d.pop("_id", ""))
     return d
 
 def fix_all(docs):
     return [fix(d) for d in docs]
+
+def college_id():
+    """Return current session's college_id (str)."""
+    return session.get("college_id", "")
+
+def scoped(extra=None):
+    """Base filter scoped to current college."""
+    f = {"college_id": college_id()}
+    if extra: f.update(extra)
+    return f
 
 # ─── Gemini helper ────────────────────────────────────────────────────────────
 def gemini(prompt: str, timeout: int = 60) -> str:
@@ -68,14 +74,19 @@ def gemini(prompt: str, timeout: int = 60) -> str:
 
 # ─── Indexes (run once on startup) ────────────────────────────────────────────
 def ensure_indexes():
-    mdb.students.create_index("email", unique=True)
-    mdb.companies.create_index("email", unique=True)
+    mdb.colleges.create_index("email", unique=True)
+    mdb.colleges.create_index("code",  unique=True)
+    mdb.students.create_index([("email",1),("college_id",1)], unique=True)
+    mdb.companies.create_index([("email",1),("college_id",1)], unique=True)
     mdb.applications.create_index(
         [("student_id", ASCENDING), ("drive_id", ASCENDING)], unique=True
     )
     mdb.drives.create_index([("company_id", ASCENDING), ("status", ASCENDING)])
+    mdb.drives.create_index("college_id")
     mdb.applications.create_index("drive_id")
     mdb.applications.create_index("student_id")
+    mdb.students.create_index("college_id")
+    mdb.companies.create_index("college_id")
 
 with app.app_context():
     ensure_indexes()
@@ -153,13 +164,137 @@ def ai_questions(role, rtype="Technical"):
 # ─── Routes ───────────────────────────────────────────────────────────────────
 @app.route("/")
 def index():
-    stats = {
-        "students":  mdb.students.count_documents({}),
-        "companies": mdb.companies.count_documents({}),
-        "drives":    mdb.drives.count_documents({"status": "active"}),
-        "placed":    len(mdb.applications.distinct("student_id", {"status": "selected"})),
-    }
+    cid = college_id()
+    if cid:
+        stats = {
+            "students":  mdb.students.count_documents({"college_id": cid}),
+            "companies": mdb.companies.count_documents({"college_id": cid}),
+            "drives":    mdb.drives.count_documents({"college_id": cid, "status": "active"}),
+            "placed":    len(mdb.applications.distinct("student_id",
+                             {"status": "selected",
+                              "drive_id": {"$in": [str(d["_id"]) for d in mdb.drives.find({"college_id": cid}, {"_id":1})]}})),
+        }
+    else:
+        stats = {
+            "students":  mdb.students.count_documents({}),
+            "companies": mdb.companies.count_documents({}),
+            "drives":    mdb.drives.count_documents({"status": "active"}),
+            "placed":    len(mdb.applications.distinct("student_id", {"status": "selected"})),
+        }
     return render_template("index.html", stats=stats)
+
+# ── College self-registration ─────────────────────────────────────────────────
+@app.route("/college/register", methods=["GET","POST"])
+def college_register_page():
+    if request.method == "POST":
+        f = request.form
+        if f.get("pwd") != f.get("pwd2"):
+            return render_template("college_register.html", error="Passwords do not match.")
+        try:
+            mdb.colleges.insert_one({
+                "name":       f["name"].strip(),
+                "code":       f["code"].strip().upper(),
+                "email":      f["email"].strip().lower(),
+                "pwd":        f["pwd"],
+                "phone":      f.get("phone","").strip(),
+                "location":   f.get("location","").strip(),
+                "university": f.get("university","").strip(),
+                "active":     True,
+                "created":    datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            })
+            return render_template("college_register.html", success=True)
+        except DuplicateKeyError:
+            return render_template("college_register.html", error="Email or code already registered.")
+    return render_template("college_register.html")
+
+# ── Super Admin routes ────────────────────────────────────────────────────────
+@app.route("/superadmin/login", methods=["GET","POST"])
+def superadmin_login():
+    if request.method == "POST":
+        email = request.form.get("email","").strip()
+        pwd   = request.form.get("pwd","").strip()
+        if email == SUPER_ADMIN_EMAIL and pwd == SUPER_ADMIN_PWD:
+            session.update({"role":"superadmin","name":"Super Admin","email":email})
+            return redirect(url_for("superadmin_dash"))
+        return render_template("login.html", error="Invalid super admin credentials.", superadmin=True)
+    return render_template("login.html", superadmin=True)
+
+@app.route("/superadmin/logout")
+def superadmin_logout():
+    session.clear()
+    return redirect(url_for("superadmin_login"))
+
+@app.route("/superadmin")
+def superadmin_dash():
+    if session.get("role") != "superadmin":
+        return redirect(url_for("superadmin_login"))
+    colleges_raw = list(mdb.colleges.find().sort("created", DESCENDING))
+    colleges = fix_all(colleges_raw)
+
+    # Per-college stats
+    c_stats = {}
+    for c in colleges:
+        cid = c["id"]
+        drive_ids = [str(d["_id"]) for d in mdb.drives.find({"college_id": cid}, {"_id":1})]
+        c_stats[cid] = {
+            "students": mdb.students.count_documents({"college_id": cid}),
+            "drives":   len(drive_ids),
+            "placed":   len(mdb.applications.distinct("student_id",
+                            {"status":"selected","drive_id":{"$in": drive_ids}})) if drive_ids else 0,
+        }
+
+    total_students = sum(v["students"] for v in c_stats.values())
+    total_placed   = sum(v["placed"]   for v in c_stats.values())
+    stats = {"colleges": len(colleges), "students": total_students, "placed": total_placed}
+
+    add_error   = request.args.get("add_error","")
+    add_success = request.args.get("add_success","")
+    return render_template("superadmin.html", colleges=colleges, c_stats=c_stats,
+                           stats=stats, add_error=add_error, add_success=add_success)
+
+@app.route("/superadmin/college/add", methods=["POST"])
+def superadmin_add_college():
+    if session.get("role") != "superadmin":
+        return redirect(url_for("superadmin_login"))
+    f = request.form
+    try:
+        mdb.colleges.insert_one({
+            "name":       f["name"].strip(),
+            "code":       f["code"].strip().upper(),
+            "email":      f["email"].strip().lower(),
+            "pwd":        f["pwd"],
+            "phone":      f.get("phone","").strip(),
+            "location":   f.get("location","").strip(),
+            "university": f.get("university","").strip(),
+            "active":     True,
+            "created":    datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        })
+        return redirect(url_for("superadmin_dash") + "?add_success=College+created+successfully")
+    except DuplicateKeyError:
+        return redirect(url_for("superadmin_dash") + "?add_error=Email+or+code+already+exists")
+
+@app.route("/superadmin/college/<cid>/toggle", methods=["POST"])
+def superadmin_toggle_college(cid):
+    if session.get("role") != "superadmin":
+        return redirect(url_for("superadmin_login"))
+    col = mdb.colleges.find_one({"_id": oid(cid)})
+    if col:
+        mdb.colleges.update_one({"_id": oid(cid)}, {"$set": {"active": not col.get("active", True)}})
+    return redirect(url_for("superadmin_dash"))
+
+@app.route("/superadmin/college/<cid>/delete", methods=["POST"])
+def superadmin_delete_college(cid):
+    if session.get("role") != "superadmin":
+        return redirect(url_for("superadmin_login"))
+    # Remove all college data
+    mdb.colleges.delete_one({"_id": oid(cid)})
+    mdb.students.delete_many({"college_id": cid})
+    mdb.companies.delete_many({"college_id": cid})
+    drive_ids = [str(d["_id"]) for d in mdb.drives.find({"college_id": cid}, {"_id":1})]
+    mdb.drives.delete_many({"college_id": cid})
+    if drive_ids:
+        mdb.applications.delete_many({"drive_id": {"$in": drive_ids}})
+    return redirect(url_for("superadmin_dash"))
 
 @app.route("/login", methods=["GET","POST"])
 def login():
@@ -167,16 +302,46 @@ def login():
         email = request.form.get("email","").strip()
         pwd   = request.form.get("pwd","").strip()
         role  = request.form.get("role","")
+
+        # ── College admin login ───────────────────────────────────────────────
         if role == "admin":
-            if email == "admin@smarthire.ai" and pwd == "admin123":
-                session.update({"uid": "0", "role": "admin", "name": "Admin", "email": email})
-                return redirect(url_for("admin_dash"))
-            return render_template("login.html", error="Invalid admin credentials.")
-        col = mdb.students if role == "student" else mdb.companies
-        row = col.find_one({"email": email})
-        if not row: return render_template("login.html", error="Account not found.")
-        if row["pwd"] != pwd: return render_template("login.html", error="Wrong password.")
-        session.update({"uid": str(row["_id"]), "role": role, "name": row["name"], "email": email})
+            col = mdb.colleges.find_one({"email": email})
+            if not col:
+                return render_template("login.html", error="College not found.")
+            if not col.get("active", True):
+                return render_template("login.html", error="This college portal has been deactivated.")
+            if col["pwd"] != pwd:
+                return render_template("login.html", error="Wrong password.")
+            session.update({
+                "uid": str(col["_id"]), "role": "admin",
+                "name": col["name"], "email": email,
+                "college_id": str(col["_id"]), "college_name": col["name"]
+            })
+            return redirect(url_for("admin_dash"))
+
+        # ── Student / Company login (scoped to college) ───────────────────────
+        # Find the college first from the email domain or let user pick
+        col_id = request.form.get("college_id","").strip()
+        query  = {"email": email}
+        if col_id:
+            query["college_id"] = col_id
+
+        db_col = mdb.students if role == "student" else mdb.companies
+        row    = db_col.find_one(query)
+        if not row:
+            return render_template("login.html", error="Account not found.")
+        if row["pwd"] != pwd:
+            return render_template("login.html", error="Wrong password.")
+        cid  = row.get("college_id","")
+        col  = mdb.colleges.find_one({"_id": oid(cid)}) if cid else None
+        if col and not col.get("active", True):
+            return render_template("login.html", error="Your college portal has been deactivated.")
+        session.update({
+            "uid": str(row["_id"]), "role": role,
+            "name": row["name"], "email": email,
+            "college_id": cid,
+            "college_name": col["name"] if col else ""
+        })
         return redirect(url_for("student_dash" if role == "student" else "company_dash"))
     return render_template("login.html")
 
@@ -188,9 +353,16 @@ def logout():
 @app.route("/register/student", methods=["GET","POST"])
 def student_register():
     if request.method == "POST":
-        f = request.form
+        f   = request.form
+        cid = f.get("college_id","").strip()
+        if not cid:
+            return render_template("student_register.html", error="College not specified.")
+        col = mdb.colleges.find_one({"_id": oid(cid)})
+        if not col or not col.get("active", True):
+            return render_template("student_register.html", error="Invalid or inactive college.")
         try:
             mdb.students.insert_one({
+                "college_id": cid,
                 "name": f["name"], "email": f["email"], "pwd": f["pwd"],
                 "phone": f["phone"], "dob": f["dob"],
                 "branch": f["branch"], "degree": f["degree"],
@@ -201,47 +373,58 @@ def student_register():
                 "resume_uploaded_on": "",
                 "created": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             })
-            return render_template("student_register.html", success=True)
+            return render_template("student_register.html", success=True, college=fix(col))
         except DuplicateKeyError:
-            return render_template("student_register.html", error="Email already registered.")
-    return render_template("student_register.html")
+            return render_template("student_register.html", error="Email already registered in this college.", college=fix(col))
+    # Pass college list for the dropdown
+    cid = request.args.get("college_id","")
+    col = fix(mdb.colleges.find_one({"_id": oid(cid)})) if cid else None
+    colleges = fix_all(mdb.colleges.find({"active": True}).sort("name", ASCENDING))
+    return render_template("student_register.html", colleges=colleges, college=col)
 
 @app.route("/register/company", methods=["GET","POST"])
 def company_register():
     if request.method == "POST":
-        f = request.form
+        f   = request.form
+        cid = f.get("college_id","").strip()
+        if not cid:
+            return render_template("company_register.html", error="College not specified.")
+        col = mdb.colleges.find_one({"_id": oid(cid)})
+        if not col or not col.get("active", True):
+            return render_template("company_register.html", error="Invalid or inactive college.")
         try:
             mdb.companies.insert_one({
+                "college_id": cid,
                 "name": f["name"], "email": f["email"], "pwd": f["pwd"],
                 "phone": f["phone"], "location": f["location"],
                 "industry": f["industry"], "website": f.get("website",""),
                 "about": f.get("about",""),
                 "created": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             })
-            return render_template("company_register.html", success=True)
+            return render_template("company_register.html", success=True, college=fix(col))
         except DuplicateKeyError:
-            return render_template("company_register.html", error="Email already registered.")
-    return render_template("company_register.html")
+            return render_template("company_register.html", error="Email already registered in this college.", college=fix(col))
+    cid = request.args.get("college_id","")
+    col = fix(mdb.colleges.find_one({"_id": oid(cid)})) if cid else None
+    colleges = fix_all(mdb.colleges.find({"active": True}).sort("name", ASCENDING))
+    return render_template("company_register.html", colleges=colleges, college=col)
 
 @app.route("/student")
 def student_dash():
     if session.get("role") != "student": return redirect(url_for("login"))
     uid = oid(session["uid"])
+    cid = college_id()
     student = fix(mdb.students.find_one({"_id": uid}))
     if not student: return redirect(url_for("logout"))
 
-    # All active drives with company info
-    active_drives_raw = list(mdb.drives.find({"status": "active"}).sort("created", DESCENDING))
-
-    # Student's existing applications as a dict: drive_id_str -> app doc
-    my_apps_raw = list(mdb.applications.find({"student_id": str(uid)}))
+    active_drives_raw = list(mdb.drives.find({"college_id": cid, "status": "active"}).sort("created", DESCENDING))
+    my_apps_raw   = list(mdb.applications.find({"student_id": str(uid)}))
     apps_by_drive = {a["drive_id"]: a for a in my_apps_raw}
 
-    # Build drives list with company name and application status
     drives = []
     for d in active_drives_raw:
         did_str = str(d["_id"])
-        company = mdb.companies.find_one({"_id": oid(d["company_id"])}, {"name": 1, "industry": 1})
+        company = mdb.companies.find_one({"_id": oid(d["company_id"])}, {"name":1,"industry":1})
         row = fix(d)
         row["company_name"] = company["name"] if company else ""
         row["industry"]     = company.get("industry","") if company else ""
@@ -251,18 +434,16 @@ def student_dash():
             row["app_status"] = app.get("status","")
             row["ai_score"]   = app.get("ai_score", 0)
         else:
-            row["app_id"]     = None
-            row["app_status"] = None
-            row["ai_score"]   = 0
+            row["app_id"] = row["app_status"] = None
+            row["ai_score"] = 0
         row["computed_score"] = row["ai_score"] if row["app_id"] and row["ai_score"] else ai_match_score(student, row)
         drives.append(row)
 
-    # My applications with drive + company info
     my_apps = []
     for a in sorted(my_apps_raw, key=lambda x: x.get("applied_on",""), reverse=True):
-        drive = mdb.drives.find_one({"_id": oid(a["drive_id"])})
+        drive   = mdb.drives.find_one({"_id": oid(a["drive_id"])})
         if not drive: continue
-        company = mdb.companies.find_one({"_id": oid(drive.get("company_id"))}, {"name": 1})
+        company = mdb.companies.find_one({"_id": oid(drive.get("company_id"))}, {"name":1})
         row = fix(a)
         row["title"]        = drive.get("title","")
         row["role"]         = drive.get("role","")
@@ -271,14 +452,12 @@ def student_dash():
         row["company_name"] = company["name"] if company else ""
         my_apps.append(row)
 
-    # AI recommendations — top 3 unapplied drives by score
     unapplied = [d for d in drives if not d["app_id"]]
     recommendations = sorted(
         [{"drive": d, "score": d["computed_score"]} for d in unapplied],
         key=lambda x: x["score"], reverse=True
     )[:3]
 
-    # Status counts for pie chart
     status_counts = {"applied":0,"eligible":0,"test":0,"interview":0,"selected":0,"rejected":0}
     for a in my_apps:
         s = a.get("status","")
@@ -379,17 +558,13 @@ def create_drive():
     if request.method == "POST":
         f = request.form
         mdb.drives.insert_one({
+            "college_id":  college_id(),
             "company_id":  str(oid(session["uid"])),
-            "title":       f["title"],
-            "role":        f["role"],
-            "location":    f["location"],
-            "salary":      float(f["salary"]),
-            "deadline":    f["deadline"],
-            "description": f.get("description",""),
-            "req_cgpa":    float(f.get("req_cgpa", 0)),
-            "req_degree":  f.get("req_degree",""),
-            "req_skills":  f.get("req_skills",""),
-            "req_year":    int(f.get("req_year", 0)),
+            "title":       f["title"], "role": f["role"],
+            "location":    f["location"], "salary": float(f["salary"]),
+            "deadline":    f["deadline"], "description": f.get("description",""),
+            "req_cgpa":    float(f.get("req_cgpa",0)), "req_degree": f.get("req_degree",""),
+            "req_skills":  f.get("req_skills",""), "req_year": int(f.get("req_year",0)),
             "status":      "active",
             "created":     datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         })
@@ -437,44 +612,46 @@ def update_status(app_id):
 @app.route("/admin")
 def admin_dash():
     if session.get("role") != "admin": return redirect(url_for("login"))
+    cid = college_id()
 
-    # ── Core stats
-    n_students  = mdb.students.count_documents({})
-    n_companies = mdb.companies.count_documents({})
-    n_drives    = mdb.drives.count_documents({})
-    n_apps      = mdb.applications.count_documents({})
-    n_selected  = len(mdb.applications.distinct("student_id", {"status": "selected"}))
+    from collections import Counter, defaultdict
+
+    # ── Core stats (scoped to this college)
+    college_drive_ids = [str(d["_id"]) for d in mdb.drives.find({"college_id": cid}, {"_id":1})]
+
+    n_students  = mdb.students.count_documents({"college_id": cid})
+    n_companies = mdb.companies.count_documents({"college_id": cid})
+    n_drives    = len(college_drive_ids)
+    n_apps      = mdb.applications.count_documents({"drive_id": {"$in": college_drive_ids}}) if college_drive_ids else 0
+    n_selected  = len(mdb.applications.distinct("student_id",
+                      {"status":"selected","drive_id":{"$in": college_drive_ids}})) if college_drive_ids else 0
     stats = {
-        "students":  n_students,
-        "companies": n_companies,
-        "drives":    n_drives,
-        "apps":      n_apps,
-        "selected":  n_selected,
+        "students":  n_students, "companies": n_companies,
+        "drives":    n_drives,   "apps":      n_apps,   "selected": n_selected,
     }
     placement_rate = min(round((n_selected / n_students * 100), 1), 100.0) if n_students else 0
 
-    # ── Recent drives (10) with company name and app count
-    drives_raw = list(mdb.drives.find().sort("created", DESCENDING).limit(10))
+    # ── Recent drives
+    drives_raw = list(mdb.drives.find({"college_id": cid}).sort("created", DESCENDING).limit(10))
     drives = []
     for d in drives_raw:
-        company = mdb.companies.find_one({"_id": oid(d.get("company_id"))}, {"name": 1})
+        company = mdb.companies.find_one({"_id": oid(d.get("company_id"))}, {"name":1})
         row = fix(d)
         row["company_name"] = company["name"] if company else ""
         row["app_count"]    = mdb.applications.count_documents({"drive_id": row["id"]})
         drives.append(row)
 
-    # ── All students with app count and best AI score
-    students_raw = list(mdb.students.find().sort("created", DESCENDING))
+    # ── All students
+    students_raw = list(mdb.students.find({"college_id": cid}).sort("created", DESCENDING))
     students = []
     for s in students_raw:
         sid_str = str(s["_id"])
-        apps_agg = list(mdb.applications.find({"student_id": sid_str}, {"ai_score": 1}))
+        apps_agg = list(mdb.applications.find({"student_id": sid_str}, {"ai_score":1}))
         row = fix(s)
         row["app_count"]  = len(apps_agg)
         row["best_score"] = max((a.get("ai_score",0) for a in apps_agg), default=0)
         students.append(row)
 
-    # ── Per-student application detail (for modal)
     student_apps = {}
     for s in students:
         apps = []
@@ -482,126 +659,109 @@ def admin_dash():
             drive   = mdb.drives.find_one({"_id": oid(a["drive_id"])}, {"title":1,"role":1,"company_id":1})
             company = mdb.companies.find_one({"_id": oid(drive.get("company_id") if drive else None)}, {"name":1}) if drive else None
             apps.append({
-                "status":       a.get("status",""),
-                "ai_score":     a.get("ai_score",0),
-                "applied_on":   a.get("applied_on",""),
-                "title":        drive["title"] if drive else "",
-                "role":         drive["role"]  if drive else "",
+                "status": a.get("status",""), "ai_score": a.get("ai_score",0),
+                "applied_on": a.get("applied_on",""),
+                "title": drive["title"] if drive else "",
+                "role":  drive["role"]  if drive else "",
                 "company_name": company["name"] if company else "",
             })
         student_apps[s["id"]] = apps
 
-    # ── Companies with aggregate counts
-    companies_raw = list(mdb.companies.find().sort("created", DESCENDING))
+    # ── Companies
+    companies_raw = list(mdb.companies.find({"college_id": cid}).sort("created", DESCENDING))
     companies = []
     for co in companies_raw:
         cid_str = str(co["_id"])
-        co_drive_ids = [str(d["_id"]) for d in mdb.drives.find({"company_id": cid_str}, {"_id": 1})]
-        n_co_drives  = len(co_drive_ids)
-        co_apps      = list(mdb.applications.find({"drive_id": {"$in": co_drive_ids}}))
-        n_co_apps    = len(co_apps)
-        n_co_sel     = len(set(a["student_id"] for a in co_apps if a.get("status") == "selected"))
+        co_drive_ids = [str(d["_id"]) for d in mdb.drives.find({"company_id": cid_str}, {"_id":1})]
+        co_apps      = list(mdb.applications.find({"drive_id": {"$in": co_drive_ids}})) if co_drive_ids else []
         row = fix(co)
-        row["drive_count"]    = n_co_drives
-        row["app_count"]      = n_co_apps
-        row["selected_count"] = n_co_sel
+        row["drive_count"]    = len(co_drive_ids)
+        row["app_count"]      = len(co_apps)
+        row["selected_count"] = len(set(a["student_id"] for a in co_apps if a.get("status")=="selected"))
         companies.append(row)
 
-    # ── Per-company detail (drives, applicants, selected)
-    company_drives     = {}
-    company_applicants = {}
-    company_selected   = {}
+    company_drives = {}; company_applicants = {}; company_selected = {}
     for co in companies:
-        cid      = co["id"]
-        co_drives_raw = list(mdb.drives.find({"company_id": cid}).sort("created", DESCENDING))
+        co_id         = co["id"]
+        co_drives_raw = list(mdb.drives.find({"company_id": co_id}).sort("created", DESCENDING))
         c_drives = []
         for d in co_drives_raw:
             row = fix(d)
             row["app_count"] = mdb.applications.count_documents({"drive_id": row["id"]})
             c_drives.append(row)
-        company_drives[cid] = c_drives
-
+        company_drives[co_id] = c_drives
         co_drive_ids = [d["id"] for d in c_drives]
         applicants = []
-        for a in mdb.applications.find({"drive_id": {"$in": co_drive_ids}}).sort("applied_on", DESCENDING):
-            student = mdb.students.find_one({"_id": oid(a["student_id"])}, {"name":1,"email":1,"branch":1,"cgpa":1})
-            drive   = mdb.drives.find_one({"_id": oid(a["drive_id"])}, {"title":1})
+        for a in mdb.applications.find({"drive_id": {"$in": co_drive_ids}}).sort("applied_on", DESCENDING) if co_drive_ids else []:
+            stu   = mdb.students.find_one({"_id": oid(a["student_id"])}, {"name":1,"email":1,"branch":1,"cgpa":1})
+            drv   = mdb.drives.find_one({"_id": oid(a["drive_id"])}, {"title":1})
             applicants.append({
-                "name":        student["name"]    if student else "",
-                "email":       student["email"]   if student else "",
-                "branch":      student.get("branch","") if student else "",
-                "cgpa":        student.get("cgpa",0)    if student else 0,
-                "status":      a.get("status",""),
-                "ai_score":    a.get("ai_score",0),
-                "applied_on":  a.get("applied_on",""),
-                "drive_title": drive["title"] if drive else "",
+                "name": stu["name"] if stu else "", "email": stu["email"] if stu else "",
+                "branch": stu.get("branch","") if stu else "", "cgpa": stu.get("cgpa",0) if stu else 0,
+                "status": a.get("status",""), "ai_score": a.get("ai_score",0),
+                "applied_on": a.get("applied_on",""), "drive_title": drv["title"] if drv else "",
             })
-        company_applicants[cid] = applicants
-        company_selected[cid]   = [r for r in applicants if r["status"] == "selected"]
+        company_applicants[co_id] = applicants
+        company_selected[co_id]   = [r for r in applicants if r["status"]=="selected"]
 
-    # ── Branch-wise placements
-    selected_apps = list(mdb.applications.find({"status": "selected"}))
-    from collections import Counter
+    # ── Analytics
+    sel_apps = list(mdb.applications.find({"status":"selected","drive_id":{"$in": college_drive_ids}})) if college_drive_ids else []
     branch_counter = Counter()
-    for a in selected_apps:
-        s = mdb.students.find_one({"_id": oid(a["student_id"])}, {"branch": 1})
+    for a in sel_apps:
+        s = mdb.students.find_one({"_id": oid(a["student_id"])}, {"branch":1})
         if s: branch_counter[s.get("branch","")] += 1
     branch_stats = [{"branch": b, "placed": c} for b, c in branch_counter.most_common()]
 
-    # ── Monthly placements/applications
-    from collections import defaultdict
-    monthly_data = defaultdict(lambda: {"apps": 0, "placed": 0})
-    for a in mdb.applications.find():
+    monthly_data = defaultdict(lambda: {"apps":0,"placed":0})
+    all_apps_q   = mdb.applications.find({"drive_id":{"$in": college_drive_ids}}) if college_drive_ids else []
+    for a in all_apps_q:
         month = (a.get("applied_on") or "")[:7]
         if month:
             monthly_data[month]["apps"] += 1
-            if a.get("status") == "selected":
-                monthly_data[month]["placed"] += 1
-    sorted_months = sorted(monthly_data.keys())[-12:]
+            if a.get("status") == "selected": monthly_data[month]["placed"] += 1
+    sorted_months  = sorted(monthly_data.keys())[-12:]
     monthly_labels = sorted_months
     monthly_apps   = [monthly_data[m]["apps"]   for m in sorted_months]
     monthly_placed = [monthly_data[m]["placed"] for m in sorted_months]
 
-    # ── Top recruiting companies (by selected count)
     company_hire_count = Counter()
-    for a in mdb.applications.find({"status": "selected"}):
-        drive = mdb.drives.find_one({"_id": oid(a["drive_id"])}, {"company_id": 1})
+    for a in sel_apps:
+        drive = mdb.drives.find_one({"_id": oid(a["drive_id"])}, {"company_id":1})
         if drive:
-            co = mdb.companies.find_one({"_id": oid(drive["company_id"])}, {"name": 1})
+            co = mdb.companies.find_one({"_id": oid(drive["company_id"])}, {"name":1})
             if co: company_hire_count[co["name"]] += 1
     top_companies = [{"name": n, "hired": c} for n, c in company_hire_count.most_common(5)]
 
-    # ── Status breakdown
     status_counts = {"applied":0,"eligible":0,"test":0,"interview":0,"selected":0,"rejected":0}
-    for a in mdb.applications.find({}, {"status": 1}):
+    all_apps_status = mdb.applications.find({"drive_id":{"$in": college_drive_ids}}, {"status":1}) if college_drive_ids else []
+    for a in all_apps_status:
         s = a.get("status","")
         if s in status_counts: status_counts[s] += 1
 
-    # ── Recent registrations
-    recent_students  = [dict(fix(s), type="student")  for s in mdb.students.find().sort("created", DESCENDING).limit(5)]
-    recent_companies = [dict(fix(c), type="company") for c in mdb.companies.find().sort("created", DESCENDING).limit(5)]
+    recent_students  = [dict(fix(s), type="student")  for s in mdb.students.find({"college_id":cid}).sort("created", DESCENDING).limit(5)]
+    recent_companies = [dict(fix(c), type="company") for c in mdb.companies.find({"college_id":cid}).sort("created", DESCENDING).limit(5)]
     recent_regs = sorted(recent_students + recent_companies, key=lambda x: x.get("created",""), reverse=True)[:10]
 
     return render_template("admin_dash.html",
         stats=stats, placement_rate=placement_rate,
         drives=drives, students=students, companies=companies,
         student_apps=student_apps,
-        company_drives=company_drives,
-        company_applicants=company_applicants,
-        company_selected=company_selected,
+        company_drives=company_drives, company_applicants=company_applicants, company_selected=company_selected,
         branch_stats=branch_stats,
         monthly_labels=monthly_labels, monthly_apps=monthly_apps, monthly_placed=monthly_placed,
-        top_companies=top_companies, status_counts=status_counts,
-        recent_regs=recent_regs
+        top_companies=top_companies, status_counts=status_counts, recent_regs=recent_regs,
+        college_name=session.get("college_name","")
     )
 
 @app.route("/admin/register/student", methods=["GET","POST"])
 def admin_register_student():
     if session.get("role") != "admin": return redirect(url_for("login"))
     if request.method == "POST":
-        f = request.form
+        f   = request.form
+        cid = college_id()
         try:
             mdb.students.insert_one({
+                "college_id": cid,
                 "name": f["name"], "email": f["email"], "pwd": f["pwd"],
                 "phone": f["phone"], "dob": f["dob"],
                 "branch": f["branch"], "degree": f["degree"],
@@ -621,9 +781,11 @@ def admin_register_student():
 def admin_register_company():
     if session.get("role") != "admin": return redirect(url_for("login"))
     if request.method == "POST":
-        f = request.form
+        f   = request.form
+        cid = college_id()
         try:
             mdb.companies.insert_one({
+                "college_id": cid,
                 "name": f["name"], "email": f["email"], "pwd": f["pwd"],
                 "phone": f["phone"], "location": f["location"],
                 "industry": f["industry"], "website": f.get("website",""),
