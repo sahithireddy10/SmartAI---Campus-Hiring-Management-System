@@ -273,6 +273,9 @@ body { background: #f5f7ff !important; }
         <button class="prep-btn" onclick="showSection('tests')">
           <i class="fa-solid fa-comments"></i> Interview Prep
         </button>
+        <button class="prep-btn" onclick="showCareerAdvice()" id="career-advice-btn" style="margin-left:8px;background:#f0fdf4;color:#059669;border-color:#6ee7b7;">
+          <i class="fa-solid fa-wand-magic-sparkles"></i> AI Career Advice
+        </button>
       </div>
 
       <!-- Stat cards -->
@@ -411,6 +414,101 @@ body { background: #f5f7ff !important; }
 
       </div><!-- end dash-grid -->
     </div><!-- end dashboard section -->
+
+    <!-- ── Career Advice Modal ── -->
+    <div id="career-advice-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:2000;align-items:center;justify-content:center;">
+      <div style="background:#fff;border-radius:18px;padding:28px;max-width:560px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+          <h3 style="font-size:1.1rem;font-weight:800;color:#111827;display:flex;align-items:center;gap:8px;">
+            <span style="font-size:1.3rem;">✨</span> AI Career Advice
+          </h3>
+          <button onclick="closeCareerAdvice()" style="background:#f3f4f6;border:none;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:0.85rem;color:#6b7280;">✕</button>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+          {% for topic in ['Skills to learn','Interview preparation','Resume tips','Salary negotiation','Career switch'] %}
+          <button onclick="getCareerAdvice('{{ topic }}')"
+            style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:20px;padding:6px 14px;
+                   font-size:0.78rem;font-weight:600;color:#4f46e5;cursor:pointer;font-family:'Inter',sans-serif;">
+            {{ topic }}
+          </button>
+          {% endfor %}
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:16px;">
+          <input id="career-topic-input" type="text" placeholder="Or type your own topic…"
+            style="flex:1;padding:9px 14px;border:1.5px solid #e2e5f0;border-radius:9px;
+                   font-size:0.85rem;font-family:'Inter',sans-serif;outline:none;color:#111827;">
+          <button onclick="getCareerAdvice(document.getElementById('career-topic-input').value)"
+            style="background:#4f46e5;color:#fff;border:none;border-radius:9px;padding:9px 18px;
+                   font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;">
+            Ask
+          </button>
+        </div>
+        <div id="career-advice-output" style="display:none;background:#f8f9ff;border:1px solid #e2e5f0;border-radius:12px;padding:18px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <span style="font-size:0.78rem;font-weight:700;color:#4f46e5;text-transform:uppercase;letter-spacing:0.5px;">Gemini AI</span>
+            <button id="career-speak-btn" onclick="speakCareerAdvice()"
+              style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:6px;padding:3px 9px;cursor:pointer;font-size:0.72rem;color:#4f46e5;">
+              🔊 Listen
+            </button>
+          </div>
+          <div id="career-advice-text" style="font-size:0.875rem;color:#374151;line-height:1.8;white-space:pre-line;"></div>
+        </div>
+        <div id="career-advice-loading" style="display:none;text-align:center;padding:24px;">
+          <i class="fa-solid fa-spinner fa-spin" style="font-size:1.5rem;color:#4f46e5;"></i>
+          <p style="font-size:0.82rem;color:#6b7280;margin-top:8px;">Gemini is thinking…</p>
+        </div>
+      </div>
+    </div>
+
+    <script>
+    function showCareerAdvice() {
+      document.getElementById('career-advice-modal').style.display = 'flex';
+    }
+    function closeCareerAdvice() {
+      document.getElementById('career-advice-modal').style.display = 'none';
+    }
+    function getCareerAdvice(topic) {
+      if (!topic || !topic.trim()) return;
+      document.getElementById('career-advice-output').style.display = 'none';
+      document.getElementById('career-advice-loading').style.display = 'block';
+      fetch('/ai/career-advice', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({topic: topic})
+      }).then(r => r.json()).then(d => {
+        document.getElementById('career-advice-loading').style.display = 'none';
+        document.getElementById('career-advice-text').textContent = d.advice || 'No advice returned.';
+        document.getElementById('career-advice-output').style.display = 'block';
+      }).catch(() => {
+        document.getElementById('career-advice-loading').style.display = 'none';
+      });
+    }
+    function speakCareerAdvice() {
+      const text  = document.getElementById('career-advice-text').textContent;
+      const btn   = document.getElementById('career-speak-btn');
+      const clean = text.replace(/[*_`#>\-🔊]/g, '').replace(/\s+/g, ' ').trim();
+      if (!clean || !('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel();
+      const utt = new SpeechSynthesisUtterance(clean);
+      utt.lang = 'en-IN';
+      utt.rate = 0.92;
+
+      function doSpeak() {
+        const voices = window.speechSynthesis.getVoices();
+        const pref = voices.find(v => v.lang === 'en-IN') ||
+                     voices.find(v => v.lang.startsWith('en'));
+        if (pref) utt.voice = pref;
+        btn.textContent = '🔊 Speaking…';
+        utt.onend  = () => { btn.textContent = '🔊 Listen'; };
+        utt.onerror= () => { btn.textContent = '🔊 Listen'; };
+        window.speechSynthesis.speak(utt);
+      }
+
+      const voices = window.speechSynthesis.getVoices();
+      if (voices.length) { doSpeak(); }
+      else { window.speechSynthesis.onvoiceschanged = doSpeak; }
+    }
+    </script>
 
 
     <!-- ══════════ PROFILE ══════════ -->
@@ -568,6 +666,82 @@ body { background: #f5f7ff !important; }
             </div>
             {% else %}
             <p style="font-size:0.82rem;color:#9ca3af;">No skills added yet.</p>
+            {% endif %}
+          </div>
+
+          <!-- GitHub -->
+          <div class="panel" id="github-panel">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+              <div style="font-size:0.95rem;font-weight:700;color:#111827;display:flex;align-items:center;gap:8px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="#111827"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+                GitHub
+              </div>
+              {% if student.get('github_login') %}
+              <a href="https://github.com/{{ student['github_login'] }}" target="_blank"
+                 style="font-size:0.75rem;color:#4f46e5;font-weight:600;text-decoration:none;">
+                @{{ student['github_login'] }} ↗
+              </a>
+              {% endif %}
+            </div>
+
+            {% if student.get('github_login') %}
+              <!-- Already connected -->
+              {% if student.get('github_repos') %}
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                {% for repo in student['github_repos'][:6] %}
+                <a href="{{ repo['url'] }}" target="_blank"
+                   style="display:flex;align-items:flex-start;justify-content:space-between;
+                          background:#f8f9ff;border:1px solid #e2e5f0;border-radius:9px;
+                          padding:10px 12px;text-decoration:none;transition:border-color 0.15s;"
+                   onmouseover="this.style.borderColor='#c7d2fe'" onmouseout="this.style.borderColor='#e2e5f0'">
+                  <div style="flex:1;min-width:0;">
+                    <div style="font-size:0.82rem;font-weight:700;color:#4f46e5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ repo['name'] }}</div>
+                    {% if repo['description'] %}
+                    <div style="font-size:0.72rem;color:#6b7280;margin-top:2px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">{{ repo['description'] }}</div>
+                    {% endif %}
+                    <div style="display:flex;align-items:center;gap:10px;margin-top:6px;">
+                      {% if repo['language'] %}
+                      <span style="font-size:0.68rem;background:#eef2ff;color:#4f46e5;padding:2px 7px;border-radius:20px;font-weight:600;">{{ repo['language'] }}</span>
+                      {% endif %}
+                      {% if repo['stars'] %}
+                      <span style="font-size:0.68rem;color:#9ca3af;">⭐ {{ repo['stars'] }}</span>
+                      {% endif %}
+                      {% if repo['forks'] %}
+                      <span style="font-size:0.68rem;color:#9ca3af;">🍴 {{ repo['forks'] }}</span>
+                      {% endif %}
+                    </div>
+                  </div>
+                </a>
+                {% endfor %}
+              </div>
+              {% else %}
+              <p style="font-size:0.82rem;color:#9ca3af;">No public repositories found.</p>
+              {% endif %}
+              <a href="/auth/github"
+                 style="display:inline-flex;align-items:center;gap:6px;margin-top:12px;
+                        font-size:0.78rem;color:#6b7280;font-weight:600;">
+                🔄 Refresh GitHub
+              </a>
+            {% else %}
+              <!-- Not connected -->
+              <div style="text-align:center;padding:16px 0 8px;">
+                <p style="font-size:0.82rem;color:#6b7280;margin-bottom:14px;">
+                  Connect your GitHub to showcase your projects to recruiters.
+                </p>
+                <a href="/auth/github"
+                   style="display:inline-flex;align-items:center;justify-content:center;gap:8px;
+                          background:#24292f;color:#fff;border-radius:9px;padding:10px 20px;
+                          font-size:0.85rem;font-weight:700;text-decoration:none;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+                  Connect GitHub
+                </a>
+              </div>
+            {% endif %}
+
+            {% if request.args.get('github') == '1' %}
+            <div style="background:#d1fae5;border:1px solid #6ee7b7;border-radius:8px;padding:8px 12px;margin-top:10px;font-size:0.78rem;color:#065f46;font-weight:600;">
+              ✅ GitHub connected successfully!
+            </div>
             {% endif %}
           </div>
 

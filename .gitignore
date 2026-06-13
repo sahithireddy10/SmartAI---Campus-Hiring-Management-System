@@ -1,0 +1,12 @@
+.env
+__pycache__/
+*.pyc
+*.pyo
+smarthire.db
+static/uploads/*
+!static/uploads/.gitkeep
+.vscode/
+*.egg-info/
+dist/
+build/
+.DS_Store

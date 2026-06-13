@@ -325,11 +325,42 @@ function mockStart() {
   document.getElementById('mock-questions-screen').style.display = 'block';
   document.getElementById('mock-q-list').innerHTML = HR_QS.map((q,i) =>
     `<div class="q-card" style="margin-bottom:12px;">
-      <div class="q-num">Q${i+1}</div>
+      <div class="q-num" style="display:flex;align-items:center;justify-content:space-between;">
+        <span>Q${i+1}</span>
+        <button onclick="speakQuestion('${q.replace(/'/g,"\\'")}',this)" title="Listen to question"
+          style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:6px;padding:3px 9px;
+                 cursor:pointer;font-size:0.72rem;color:#4f46e5;font-family:'Inter',sans-serif;">
+          🔊 Listen
+        </button>
+      </div>
       <div style="font-weight:600;color:#111827;margin-bottom:8px;">${q}</div>
       <textarea style="width:100%;padding:10px 12px;border:1.5px solid #e2e5f0;border-radius:9px;font-size:0.85rem;font-family:'Inter',sans-serif;resize:vertical;min-height:70px;outline:none;color:#374151;" placeholder="Type your answer here…"></textarea>
     </div>`
   ).join('');
+}
+
+function speakQuestion(text, btn) {
+  const clean = text.replace(/[*_`#>\-🔊]/g, '').replace(/\s+/g, ' ').trim();
+  if (!clean || !('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const utt = new SpeechSynthesisUtterance(clean);
+  utt.lang  = 'en-IN';
+  utt.rate  = 0.92;
+
+  function doSpeak() {
+    const voices = window.speechSynthesis.getVoices();
+    const pref = voices.find(v => v.lang === 'en-IN') ||
+                 voices.find(v => v.lang.startsWith('en'));
+    if (pref) utt.voice = pref;
+    btn.textContent = '🔊 Speaking…';
+    utt.onend  = () => { btn.textContent = '🔊 Listen'; };
+    utt.onerror= () => { btn.textContent = '🔊 Listen'; };
+    window.speechSynthesis.speak(utt);
+  }
+
+  const voices = window.speechSynthesis.getVoices();
+  if (voices.length) { doSpeak(); }
+  else { window.speechSynthesis.onvoiceschanged = doSpeak; }
 }
 
 function mockSubmit() {
@@ -337,6 +368,38 @@ function mockSubmit() {
   const filled = answers.filter(a => a.length > 0).length;
   const fb = document.getElementById('mock-feedback-output');
   if (!filled) { fb.innerHTML = '<p style="color:#dc2626;font-size:0.82rem;">Please answer at least one question.</p>'; return; }
+
+  fb.innerHTML = `<div style="text-align:center;padding:20px;"><i class="fa-solid fa-spinner fa-spin" style="font-size:1.3rem;color:#4f46e5;"></i><p style="font-size:0.82rem;color:#6b7280;margin-top:8px;">Getting AI feedback…</p></div>`;
+
+  // Try Gemini AI feedback first
+  fetch('/ai/mock-feedback', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({answers: answers, role: 'Software Engineer'})
+  }).then(r => r.json()).then(data => {
+    const feedbackText = data.feedback || '';
+    if (feedbackText && !feedbackText.includes('not configured')) {
+      fb.innerHTML = `<div style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:12px;padding:18px;margin-top:4px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div style="font-size:0.9rem;font-weight:700;color:#4f46e5;">🤖 Gemini AI Feedback</div>
+          <button onclick="speakQuestion(document.getElementById('mock-ai-text').textContent, this)"
+            style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:6px;padding:3px 9px;cursor:pointer;font-size:0.72rem;color:#4f46e5;">
+            🔊 Listen
+          </button>
+        </div>
+        <div id="mock-ai-text" style="font-size:0.85rem;color:#374151;white-space:pre-line;line-height:1.8;">${feedbackText}</div>
+      </div>`;
+    } else {
+      renderLocalFeedback(filled, fb);
+    }
+    incTestCount('mock');
+  }).catch(() => {
+    renderLocalFeedback(filled, fb);
+    incTestCount('mock');
+  });
+}
+
+function renderLocalFeedback(filled, fb) {
   const tips = [
     'Use the STAR method (Situation, Task, Action, Result) for structured answers.',
     'Quantify achievements where possible — numbers make answers memorable.',
@@ -351,7 +414,6 @@ function mockSubmit() {
       ${tips.slice(0, Math.min(filled+1, 5)).map(t => `<li>${t}</li>`).join('')}
     </ul>
   </div>`;
-  incTestCount('mock');
 }
 
 // ── Feedback Dashboard ────────────────────────────────────────────────────────
