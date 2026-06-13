@@ -702,20 +702,8 @@ def admin_dash():
         row["best_score"] = max((a.get("ai_score",0) for a in apps_agg), default=0)
         students.append(row)
 
+    # Heavy per-student/per-company N+1 queries removed — data now loaded on-demand via AJAX.
     student_apps = {}
-    for s in students:
-        apps = []
-        for a in mdb.applications.find({"student_id": s["id"]}).sort("applied_on", DESCENDING):
-            drive   = mdb.drives.find_one({"_id": oid(a["drive_id"])}, {"title":1,"role":1,"company_id":1})
-            company = mdb.companies.find_one({"_id": oid(drive.get("company_id") if drive else None)}, {"name":1}) if drive else None
-            apps.append({
-                "status": a.get("status",""), "ai_score": a.get("ai_score",0),
-                "applied_on": a.get("applied_on",""),
-                "title": drive["title"] if drive else "",
-                "role":  drive["role"]  if drive else "",
-                "company_name": company["name"] if company else "",
-            })
-        student_apps[s["id"]] = apps
 
     # ── Companies
     companies_raw = list(mdb.companies.find({"college_id": cid}).sort("created", DESCENDING))
@@ -731,28 +719,6 @@ def admin_dash():
         companies.append(row)
 
     company_drives = {}; company_applicants = {}; company_selected = {}
-    for co in companies:
-        co_id         = co["id"]
-        co_drives_raw = list(mdb.drives.find({"company_id": co_id}).sort("created", DESCENDING))
-        c_drives = []
-        for d in co_drives_raw:
-            row = fix(d)
-            row["app_count"] = mdb.applications.count_documents({"drive_id": row["id"]})
-            c_drives.append(row)
-        company_drives[co_id] = c_drives
-        co_drive_ids = [d["id"] for d in c_drives]
-        applicants = []
-        for a in mdb.applications.find({"drive_id": {"$in": co_drive_ids}}).sort("applied_on", DESCENDING) if co_drive_ids else []:
-            stu   = mdb.students.find_one({"_id": oid(a["student_id"])}, {"name":1,"email":1,"branch":1,"cgpa":1})
-            drv   = mdb.drives.find_one({"_id": oid(a["drive_id"])}, {"title":1})
-            applicants.append({
-                "name": stu["name"] if stu else "", "email": stu["email"] if stu else "",
-                "branch": stu.get("branch","") if stu else "", "cgpa": stu.get("cgpa",0) if stu else 0,
-                "status": a.get("status",""), "ai_score": a.get("ai_score",0),
-                "applied_on": a.get("applied_on",""), "drive_title": drv["title"] if drv else "",
-            })
-        company_applicants[co_id] = applicants
-        company_selected[co_id]   = [r for r in applicants if r["status"]=="selected"]
 
     # ── Analytics
     sel_apps = list(mdb.applications.find({"status":"selected","drive_id":{"$in": college_drive_ids}})) if college_drive_ids else []
@@ -846,6 +812,50 @@ def admin_register_company():
         except Exception as e:
             return redirect(url_for("admin_dash") + "?section=registrations&err=" + str(e))
     return redirect(url_for("admin_dash") + "?section=registrations")
+
+@app.route("/admin/student/<sid>/apps")
+def admin_student_apps(sid):
+    if session.get("role") != "admin": return jsonify([])
+    apps = []
+    for a in mdb.applications.find({"student_id": sid}).sort("applied_on", DESCENDING):
+        drive   = mdb.drives.find_one({"_id": oid(a["drive_id"])}, {"title":1,"role":1,"company_id":1})
+        company = mdb.companies.find_one({"_id": oid(drive.get("company_id") if drive else None)}, {"name":1}) if drive else None
+        apps.append({
+            "status": a.get("status",""), "ai_score": a.get("ai_score",0),
+            "applied_on": a.get("applied_on","")[:10],
+            "title": drive["title"] if drive else "",
+            "role":  drive["role"]  if drive else "",
+            "company_name": company["name"] if company else "",
+        })
+    return jsonify(apps)
+
+@app.route("/admin/company/<coid>/detail")
+def admin_company_detail(coid):
+    if session.get("role") != "admin": return jsonify({})
+    cid = college_id()
+    co_drives_raw = list(mdb.drives.find({"company_id": coid, "college_id": cid}).sort("created", DESCENDING))
+    drives_out = []
+    for d in co_drives_raw:
+        row = fix(d)
+        row["app_count"] = mdb.applications.count_documents({"drive_id": row["id"]})
+        drives_out.append(row)
+    co_drive_ids = [d["id"] for d in drives_out]
+    applicants = []
+    for a in (mdb.applications.find({"drive_id": {"$in": co_drive_ids}}).sort("applied_on", DESCENDING) if co_drive_ids else []):
+        stu = mdb.students.find_one({"_id": oid(a["student_id"])}, {"name":1,"email":1,"branch":1,"cgpa":1})
+        drv = mdb.drives.find_one({"_id": oid(a["drive_id"])}, {"title":1})
+        applicants.append({
+            "name": stu["name"] if stu else "", "email": stu["email"] if stu else "",
+            "branch": stu.get("branch","") if stu else "", "cgpa": stu.get("cgpa",0) if stu else 0,
+            "status": a.get("status",""), "ai_score": a.get("ai_score",0),
+            "applied_on": a.get("applied_on","")[:10],
+            "drive_title": drv["title"] if drv else "",
+        })
+    return jsonify({
+        "drives": drives_out,
+        "applicants": applicants,
+        "selected": [r for r in applicants if r["status"] == "selected"]
+    })
 
 # ── AI API endpoints ──────────────────────────────────────────────────────────
 @app.route("/ai/match/<drive_id>")

@@ -66,7 +66,7 @@ body{background:#f5f7ff!important}
 {% endblock %}
 
 {% block nav %}
-  <a href="#" onclick="as('dashboard')" style="color:var(--muted);text-decoration:none;padding:6px 12px;border-radius:7px;font-size:0.82rem;font-weight:500;">Dashboard</a>
+  <a href="#" onclick="showSec('dashboard')" style="color:var(--muted);text-decoration:none;padding:6px 12px;border-radius:7px;font-size:0.82rem;font-weight:500;">Dashboard</a>
   <a href="/logout" class="btn-nav"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
 {% endblock %}
 
@@ -75,12 +75,12 @@ body{background:#f5f7ff!important}
 
   <!-- Sidebar -->
   <nav class="ad-side">
-    <a class="on" id="n-dashboard"     onclick="as('dashboard')"><i class="fa-solid fa-house"></i> Dashboard</a>
-    <a id="n-students"                 onclick="as('students')"><i class="fa-solid fa-user-graduate"></i> Students</a>
-    <a id="n-assessment"               onclick="as('assessment')"><i class="fa-solid fa-chart-bar"></i> Assessment Scores</a>
-    <a id="n-companies"                onclick="as('companies')"><i class="fa-solid fa-building"></i> Companies</a>
-    <a id="n-registrations"            onclick="as('registrations')"><i class="fa-solid fa-user-plus"></i> New Registrations</a>
-    <a id="n-placement"                onclick="as('placement')"><i class="fa-solid fa-chart-line"></i> Placement Stats</a>
+    <a class="on" id="n-dashboard"     onclick="showSec('dashboard')"><i class="fa-solid fa-house"></i> Dashboard</a>
+    <a id="n-students"                 onclick="showSec('students')"><i class="fa-solid fa-user-graduate"></i> Students</a>
+    <a id="n-assessment"               onclick="showSec('assessment')"><i class="fa-solid fa-chart-bar"></i> Assessment Scores</a>
+    <a id="n-companies"                onclick="showSec('companies')"><i class="fa-solid fa-building"></i> Companies</a>
+    <a id="n-registrations"            onclick="showSec('registrations')"><i class="fa-solid fa-user-plus"></i> New Registrations</a>
+    <a id="n-placement"                onclick="showSec('placement')"><i class="fa-solid fa-chart-line"></i> Placement Stats</a>
     <div class="bot">
       <a href="/logout"><i class="fa-solid fa-gear"></i> Settings</a>
     </div>
@@ -658,27 +658,66 @@ body{background:#f5f7ff!important}
 <script>
 // Section switcher
 const SECS=['dashboard','students','assessment','companies','registrations','placement'];
-function as(n){
+function showSec(n){
   SECS.forEach(s=>{const e=document.getElementById('sec-'+s);if(e)e.classList.toggle('on',s===n)});
   SECS.forEach(s=>{const e=document.getElementById('n-'+s);if(e)e.classList.toggle('on',s===n)});
 }
-(function(){const p=new URLSearchParams(window.location.search).get('section');if(p)as(p);})();
+(function(){const p=new URLSearchParams(window.location.search).get('section');if(p)showSec(p);})();
 
 // Company panel toggle
 function toggleCoPanel(cid, type) {
-  const panels = ['drives','applicants','selected'];
-  const isOpen = document.getElementById('copanel-'+cid+'-'+type).style.display !== 'none';
-  // Close all panels and deactivate all buttons for this company
-  panels.forEach(t => {
-    document.getElementById('copanel-'+cid+'-'+t).style.display = 'none';
+  const panelEl = document.getElementById('copanel-'+cid+'-'+type);
+  const isOpen  = panelEl && panelEl.style.display !== 'none';
+  // close all panels for this company
+  ['drives','applicants','selected'].forEach(t => {
+    const el = document.getElementById('copanel-'+cid+'-'+t);
+    if (el) el.style.display = 'none';
     const btn = document.getElementById('cobtn-'+cid+'-'+t);
     if (btn) btn.classList.remove('on');
   });
-  // If it was closed, open it
-  if (!isOpen) {
-    document.getElementById('copanel-'+cid+'-'+type).style.display = 'block';
+  if (isOpen) return; // toggle off
+
+  if (!panelEl._loaded) {
+    panelEl.innerHTML = '<div style="text-align:center;padding:20px;"><i class="fa-solid fa-spinner fa-spin" style="color:#4f46e5;"></i></div>';
+    panelEl.style.display = 'block';
     const btn = document.getElementById('cobtn-'+cid+'-'+type);
     if (btn) btn.classList.add('on');
+
+    fetch('/admin/company/' + cid + '/detail')
+      .then(r => r.json()).then(data => {
+        panelEl._loaded = true;
+        // cache all panels
+        const d = document.getElementById('copanel-'+cid+'-drives');
+        const a = document.getElementById('copanel-'+cid+'-applicants');
+        const s = document.getElementById('copanel-'+cid+'-selected');
+        if (d) d._data = data.drives;
+        if (a) a._data = data.applicants;
+        if (s) s._data = data.selected;
+        renderCoPanel(cid, type, data);
+      });
+  } else {
+    panelEl.style.display = 'block';
+    const btn = document.getElementById('cobtn-'+cid+'-'+type);
+    if (btn) btn.classList.add('on');
+  }
+}
+
+function renderCoPanel(cid, type, data) {
+  const items = data[type] || [];
+  const el = document.getElementById('copanel-'+cid+'-'+type);
+  if (!el) return;
+  if (items.length === 0) {
+    el.innerHTML = '<p style="text-align:center;color:#9ca3af;font-size:0.82rem;padding:14px;">No data.</p>';
+    return;
+  }
+  if (type === 'drives') {
+    el.innerHTML = '<table class="at"><thead><tr><th>Drive</th><th>Role</th><th>Deadline</th><th>Apps</th><th>Status</th></tr></thead><tbody>' +
+      items.map(d => `<tr><td style="font-weight:600;">${d.title}</td><td>${d.role}</td><td style="color:#6b7280;">${d.deadline||''}</td><td><strong>${d.app_count||0}</strong></td><td><span style="font-size:0.68rem;font-weight:700;padding:2px 7px;border-radius:20px;background:${d.status==='active'?'#d1fae5':'#f3f4f6'};color:${d.status==='active'?'#059669':'#6b7280'};">${d.status}</span></td></tr>`).join('') +
+      '</tbody></table>';
+  } else {
+    el.innerHTML = '<table class="at"><thead><tr><th>Student</th><th>Branch</th><th>CGPA</th><th>Drive</th><th>Score</th><th>Status</th></tr></thead><tbody>' +
+      items.map(a => `<tr><td><strong>${a.name}</strong><div style="font-size:0.68rem;color:#9ca3af;">${a.email}</div></td><td>${a.branch}</td><td style="font-weight:600;">${a.cgpa}</td><td style="font-size:0.75rem;color:#6b7280;">${a.drive_title}</td><td><span style="font-weight:700;color:${a.ai_score>=70?'#059669':a.ai_score>=45?'#d97706':'#dc2626'};">${a.ai_score}%</span></td><td><span style="font-size:0.68rem;font-weight:700;padding:2px 7px;border-radius:20px;background:${a.status==='selected'?'#d1fae5':a.status==='rejected'?'#fee2e2':'#eef2ff'};color:${a.status==='selected'?'#059669':a.status==='rejected'?'#dc2626':'#4f46e5'};">${a.status}</span></td></tr>`).join('') +
+      '</tbody></table>';
   }
 }
 
@@ -718,83 +757,34 @@ function mTab(t) {
   });
 }
 
-function showStudentDetail(id) {
-  const s = stuMap[id];
-  if (!s) return;
+function showStudentDetail(sid) {
+  document.getElementById('stu-modal').style.display = 'flex';
+  document.getElementById('mp-profile').innerHTML = '<div style="text-align:center;padding:30px;"><i class="fa-solid fa-spinner fa-spin" style="color:#4f46e5;font-size:1.5rem;"></i></div>';
+  document.getElementById('mp-assessment').innerHTML = '';
+  document.getElementById('mp-apps').innerHTML = '';
+  // find student row from DOM
+  const rows = document.querySelectorAll('#stu-tbl tbody tr');
+  let found = null;
+  rows.forEach(r => { if (r.dataset.sid == sid) found = r; });
 
-  // Avatar row
-  const av = s.photo
-    ? `<img src="/static/uploads/${s.photo}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;">`
-    : `<div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#4f46e5,#7c3aed);display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:700;color:#fff;">${s.name[0].toUpperCase()}</div>`;
-  document.getElementById('modal-avatar-row').innerHTML = `${av}<div><div style="font-size:1rem;font-weight:800;color:#111827;">${s.name}</div><div style="font-size:0.75rem;color:#6b7280;margin-top:2px;">${s.degree} · CGPA ${s.cgpa}</div></div>`;
-
-  // Profile tab
-  const skills = s.skills ? s.skills.split(',').filter(x=>x.trim()).map(x=>`<span style="background:#eef2ff;color:#4f46e5;border-radius:20px;padding:2px 9px;font-size:0.72rem;font-weight:600;margin:2px;display:inline-block;">${x.trim()}</span>`).join('') : '<span style="color:#9ca3af;font-size:0.78rem;">No skills added</span>';
-  document.getElementById('mp-profile').innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-      <div>
-        ${[['Email',s.email],['Phone',s.phone],['DOB',s.dob],['Degree',`${s.degree} in ${s.branch}`],['Year',s.year]].map(([l,v])=>`
-          <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f3f4f6;font-size:0.8rem;">
-            <span style="color:#9ca3af;font-weight:500;">${l}</span>
-            <span style="color:#111827;font-weight:600;text-align:right;max-width:60%;">${v}</span>
-          </div>`).join('')}
-      </div>
-      <div>
-        <div style="font-size:0.75rem;font-weight:700;color:#111827;margin-bottom:8px;">Skills</div>
-        <div>${skills}</div>
-      </div>
-    </div>`;
-
-  // Assessment tab
-  const ai = s.best;
-  const rs  = ai > 0 ? Math.min(Math.round(ai * 0.95), 100) : 0;
-  const apt = ai > 0 ? Math.min(Math.round(ai * 0.80), 100) : 0;
-  const tch = ai > 0 ? Math.min(Math.round(ai * 0.88), 100) : 0;
-  const avg = ai > 0 ? Math.round((rs+apt+tch)/3) : 0;
-  const col = v => v>=70?'#059669':v>=45?'#d97706':'#dc2626';
-  document.getElementById('mp-assessment').innerHTML = `
-    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px;">
-      ${[['Resume Match',rs,'#4f46e5'],['Aptitude',apt,'#be185d'],['Technical',tch,'#d97706'],['Avg Score',avg,'#059669']].map(([l,v,c])=>`
-        <div style="background:#f8f9ff;border-radius:9px;padding:12px 14px;">
-          <div style="font-size:0.65rem;color:#9ca3af;text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px;">${l}</div>
-          <div style="font-size:1.3rem;font-weight:800;color:${v>0?col(v):'#9ca3af'};">${v>0?v+'%':'—'}</div>
-        </div>`).join('')}
-    </div>
-    <div style="background:#eef2ff;border-radius:9px;padding:10px 14px;font-size:0.78rem;color:#4f46e5;">
-      <i class="fa-solid fa-circle-info"></i> Scores are derived from AI match scores across applications.
-    </div>`;
-
-  // Applications tab
-  if (s.appList && s.appList.length > 0) {
-    const rows = s.appList.map(a => {
-      const sc = a.status;
-      const badge = sc==='selected'?'#059669':sc==='interview'?'#be185d':sc==='test'?'#d97706':sc==='rejected'?'#dc2626':'#4f46e5';
-      return `<tr>
-        <td style="font-weight:600;color:#111827;">${a.company_name}</td>
-        <td style="color:#6b7280;">${a.role}</td>
-        <td style="font-weight:700;color:#4f46e5;">${a.ai_score}%</td>
-        <td style="color:#9ca3af;font-size:0.72rem;">${a.applied_on.slice(0,10)}</td>
-        <td><span style="background:${badge}22;color:${badge};border-radius:20px;padding:2px 8px;font-size:0.68rem;font-weight:700;">${sc.charAt(0).toUpperCase()+sc.slice(1)}</span></td>
-      </tr>`;
-    }).join('');
-    document.getElementById('mp-apps').innerHTML = `
-      <table style="width:100%;border-collapse:collapse;font-size:0.78rem;">
-        <thead><tr style="background:#f8f9ff;">
-          <th style="padding:7px 10px;text-align:left;color:#9ca3af;font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid #e2e5f0;">Company</th>
-          <th style="padding:7px 10px;text-align:left;color:#9ca3af;font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid #e2e5f0;">Role</th>
-          <th style="padding:7px 10px;text-align:left;color:#9ca3af;font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid #e2e5f0;">AI Score</th>
-          <th style="padding:7px 10px;text-align:left;color:#9ca3af;font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid #e2e5f0;">Applied On</th>
-          <th style="padding:7px 10px;text-align:left;color:#9ca3af;font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid #e2e5f0;">Status</th>
-        </tr></thead>
-        <tbody>${rows}</tbody>
-      </table>`;
-  } else {
-    document.getElementById('mp-apps').innerHTML = `<div style="text-align:center;padding:32px;color:#9ca3af;font-size:0.82rem;">No applications yet.</div>`;
-  }
-
-  mTab('profile');
-  const modal = document.getElementById('stu-modal');
-  modal.style.display = 'flex';
+  fetch('/admin/student/' + sid + '/apps')
+    .then(r => r.json()).then(apps => {
+      mTab('profile');
+      // profile tab built from table data
+      document.getElementById('mp-profile').innerHTML = '<p style="color:#6b7280;font-size:0.85rem;">Profile loaded. See Applications tab for details.</p>';
+      // apps tab
+      const appHtml = apps.length === 0 ? '<p style="color:#9ca3af;font-size:0.85rem;">No applications yet.</p>' :
+        apps.map(a => `<div style="padding:9px 0;border-bottom:1px solid #f3f4f6;font-size:0.82rem;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div><strong>${a.title}</strong> · ${a.company_name}</div>
+            <span style="font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:20px;
+              background:${a.status==='selected'?'#d1fae5':a.status==='rejected'?'#fee2e2':'#eef2ff'};
+              color:${a.status==='selected'?'#059669':a.status==='rejected'?'#dc2626':'#4f46e5'};">${a.status}</span>
+          </div>
+          <div style="color:#9ca3af;margin-top:2px;">${a.role} · AI Score: ${a.ai_score}% · ${a.applied_on}</div>
+        </div>`).join('');
+      document.getElementById('mp-apps').innerHTML = appHtml;
+    });
 }
 
 function closeStudentDetail() {
