@@ -28,28 +28,55 @@ def ensure_indexes():
     mdb.students.create_index("college_id")
     mdb.companies.create_index("college_id")
 
-# ── Default demo college ───────────────────────────────────────────────────────
-DEMO_COLLEGE = {
-    "name":       "Woxsen University",
-    "code":       "WU2026",
-    "email":      "admin@woxsen.edu.in",
-    "pwd":        "woxsen@123",
-    "phone":      "040-23456789",
-    "location":   "Hyderabad, Telangana",
-    "university": "Woxsen University",
-    "active":     True,
-    "created":    "2025-10-01 09:00:00",
-}
+# ── Default demo colleges ─────────────────────────────────────────────────────
+DEMO_COLLEGES = [
+    {
+        "name":       "Woxsen University",
+        "code":       "WU2026",
+        "email":      "admin@woxsen.edu.in",
+        "pwd":        "woxsen@123",
+        "phone":      "040-23456789",
+        "location":   "Hyderabad, Telangana",
+        "university": "Woxsen University",
+        "active":     True,
+        "created":    "2025-10-01 09:00:00",
+        "admins": [
+            {"name":"Dr. Priya Sharma","email":"admin@woxsen.edu.in","pwd":"woxsen@123","phone":"9876500001","role":"primary"},
+            {"name":"Mr. Rahul Nair",  "email":"rahul.nair@woxsen.edu.in","pwd":"rahul@123","phone":"9876500002","role":"secondary"},
+        ]
+    },
+    {
+        "name":       "BITS Pilani Hyderabad",
+        "code":       "BITSH2026",
+        "email":      "tpc@bits-hyderabad.ac.in",
+        "pwd":        "bits@123",
+        "phone":      "040-66303541",
+        "location":   "Hyderabad, Telangana",
+        "university": "BITS Pilani",
+        "active":     True,
+        "created":    "2025-10-05 10:00:00",
+        "admins": [
+            {"name":"Prof. Anita Reddy", "email":"tpc@bits-hyderabad.ac.in","pwd":"bits@123","phone":"9876500003","role":"primary"},
+            {"name":"Dr. Suresh Kumar",  "email":"suresh.kumar@bits-hyderabad.ac.in","pwd":"suresh@123","phone":"9876500004","role":"secondary"},
+        ]
+    },
+]
 
-def get_or_create_college():
-    """Return the demo college _id string, creating it if needed."""
-    existing = mdb.colleges.find_one({"code": DEMO_COLLEGE["code"]})
-    if existing:
-        print(f"  ⏭  College already exists: {DEMO_COLLEGE['name']}")
-        return str(existing["_id"])
-    result = mdb.colleges.insert_one(DEMO_COLLEGE.copy())
-    print(f"  ✅ Created college: {DEMO_COLLEGE['name']} (admin: {DEMO_COLLEGE['email']} / {DEMO_COLLEGE['pwd']})")
-    return str(result.inserted_id)
+def get_or_create_colleges():
+    """Return list of (college_id, college_name) tuples."""
+    result = []
+    for col_data in DEMO_COLLEGES:
+        existing = mdb.colleges.find_one({"code": col_data["code"]})
+        if existing:
+            print(f"  ⏭  College already exists: {col_data['name']}")
+            result.append((str(existing["_id"]), col_data["name"]))
+        else:
+            ins = mdb.colleges.insert_one(col_data.copy())
+            print(f"  ✅ Created college: {col_data['name']}")
+            print(f"     Admin 1: {col_data['admins'][0]['email']} / {col_data['admins'][0]['pwd']}")
+            print(f"     Admin 2: {col_data['admins'][1]['email']} / {col_data['admins'][1]['pwd']}")
+            result.append((str(ins.inserted_id), col_data["name"]))
+    return result
 
 # ── Check existing data ───────────────────────────────────────────────────────
 def check_existing():
@@ -352,50 +379,52 @@ def main():
     print("\n📊 STEP 1 – Checking existing data...")
     check_existing()
 
-    print("\n🏫 STEP 2 – Setting up demo college...")
-    college_id = get_or_create_college()
-    print(f"  College ID: {college_id}")
+    print("\n🏫 STEP 2 – Setting up demo colleges...")
+    colleges = get_or_create_colleges()
 
-    print("\n🏢 STEP 3 – Inserting companies...")
-    ins_co, skip_co = insert_companies(college_id)
-    for n in ins_co:  print(f"  ✅ Added   : {n}")
-    for n in skip_co: print(f"  ⏭  Skipped : {n} (already exists)")
+    for college_id, college_name in colleges:
+        print(f"\n{'='*55}")
+        print(f"Seeding: {college_name} (ID: {college_id})")
+        print(f"{'='*55}")
 
-    print("\n🎓 STEP 4 – Inserting students...")
-    ins_st, skip_st = insert_students(college_id)
-    for n in ins_st:  print(f"  ✅ Added   : {n}")
-    for n in skip_st: print(f"  ⏭  Skipped : {n} (already exists)")
+        print("\n🏢 Inserting companies...")
+        ins_co, skip_co = insert_companies(college_id)
+        for n in ins_co:  print(f"  ✅ {n}")
+        for n in skip_co: print(f"  ⏭  {n} (exists)")
 
-    print("\n📋 STEP 5 – Inserting drives...")
-    ins_dr, skip_dr = insert_drives(college_id)
-    for n in ins_dr:  print(f"  ✅ Added   : {n}")
-    for n in skip_dr: print(f"  ⏭  Skipped : {n} (already exists)")
+        print("\n🎓 Inserting students...")
+        ins_st, skip_st = insert_students(college_id)
+        for n in ins_st:  print(f"  ✅ {n}")
+        for n in skip_st: print(f"  ⏭  {n} (exists)")
 
-    print("\n📝 STEP 6 – Inserting applications...")
-    ins_ap, skip_ap = insert_applications(college_id)
-    print(f"  ✅ Added   : {ins_ap} applications")
-    print(f"  ⏭  Skipped : {skip_ap} (already exist)")
+        print("\n📋 Inserting drives...")
+        ins_dr, skip_dr = insert_drives(college_id)
+        for n in ins_dr:  print(f"  ✅ {n}")
+        for n in skip_dr: print(f"  ⏭  {n} (exists)")
+
+        print("\n📝 Inserting applications...")
+        ins_ap, skip_ap = insert_applications(college_id)
+        print(f"  ✅ Added: {ins_ap}  ⏭  Skipped: {skip_ap}")
 
     print("\n" + "=" * 55)
     print("FINAL SUMMARY")
     check_existing()
 
     from collections import Counter
-    print("\nApplication status breakdown:")
     statuses = [a["status"] for a in mdb.applications.find({}, {"status": 1})]
+    print("\nApplication status breakdown:")
     for status, cnt in Counter(statuses).most_common():
         print(f"  {status:<12}: {cnt}")
 
-    scores = [a["ai_score"] for a in mdb.applications.find({}, {"ai_score": 1}) if a.get("ai_score")]
-    if scores:
-        print(f"\nAI score range:  Min={min(scores)}  Max={max(scores)}  Avg={round(sum(scores)/len(scores),1)}")
-
     print(f"\n✅ Seeding complete!")
     print(f"\n📋 Demo Login Credentials:")
-    print(f"  Super Admin : superadmin@smarthire.ai / super@123  →  /superadmin/login")
-    print(f"  College Admin: {DEMO_COLLEGE['email']} / {DEMO_COLLEGE['pwd']}  →  /login (role: College Admin)")
-    print(f"  Student      : arjun.sharma@student.edu / pass@123")
-    print(f"  Company      : hr@tcs.com / tcs@123")
+    print(f"  Super Admin  : superadmin@smarthire.ai / super@123  →  /superadmin/login")
+    for col_data in DEMO_COLLEGES:
+        print(f"\n  🏫 {col_data['name']}")
+        for adm in col_data["admins"]:
+            print(f"     Admin ({adm['role']}): {adm['email']} / {adm['pwd']}")
+    print(f"\n  Student (both colleges): arjun.sharma@student.edu / pass@123")
+    print(f"  Company  (both colleges): hr@tcs.com / tcs@123")
 
 if __name__ == "__main__":
     main()

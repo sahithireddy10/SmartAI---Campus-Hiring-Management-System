@@ -166,13 +166,13 @@ def ai_questions(role, rtype="Technical"):
 def index():
     cid = college_id()
     if cid:
+        drive_ids = [str(d["_id"]) for d in mdb.drives.find({"college_id": cid}, {"_id":1})]
         stats = {
             "students":  mdb.students.count_documents({"college_id": cid}),
             "companies": mdb.companies.count_documents({"college_id": cid}),
             "drives":    mdb.drives.count_documents({"college_id": cid, "status": "active"}),
             "placed":    len(mdb.applications.distinct("student_id",
-                             {"status": "selected",
-                              "drive_id": {"$in": [str(d["_id"]) for d in mdb.drives.find({"college_id": cid}, {"_id":1})]}})),
+                             {"status": "selected", "drive_id": {"$in": drive_ids}})) if drive_ids else 0,
         }
     else:
         stats = {
@@ -181,31 +181,69 @@ def index():
             "drives":    mdb.drives.count_documents({"status": "active"}),
             "placed":    len(mdb.applications.distinct("student_id", {"status": "selected"})),
         }
-    return render_template("index.html", stats=stats)
+    colleges     = fix_all(mdb.colleges.find({"active": True}, {"name":1}).sort("name", ASCENDING))
+    demo_colleges = [
+        {"name": c["name"], "email": c["email"], "pwd": c["pwd"]}
+        for c in mdb.colleges.find({"active": True}, {"name":1,"email":1,"pwd":1}).sort("created", ASCENDING).limit(2)
+    ]
+    error   = request.args.get("error","")
+    reg_error   = request.args.get("reg_error","")
+    reg_success = request.args.get("reg_success","")
+    return render_template("index.html", stats=stats, colleges=colleges,
+                           demo_colleges=demo_colleges,
+                           error=error, reg_error=reg_error, reg_success=reg_success)
 
 # ── College self-registration ─────────────────────────────────────────────────
 @app.route("/college/register", methods=["GET","POST"])
 def college_register_page():
     if request.method == "POST":
         f = request.form
-        if f.get("pwd") != f.get("pwd2"):
-            return render_template("college_register.html", error="Passwords do not match.")
+        # Validate passwords
+        if not f.get("admin1_pwd") or len(f["admin1_pwd"]) < 6:
+            return redirect(url_for("index") + "?reg_error=Admin+1+password+must+be+at+least+6+characters")
+        if not f.get("admin2_pwd") or len(f["admin2_pwd"]) < 6:
+            return redirect(url_for("index") + "?reg_error=Admin+2+password+must+be+at+least+6+characters")
+        if f["admin1_email"].strip().lower() == f["admin2_email"].strip().lower():
+            return redirect(url_for("index") + "?reg_error=Admin+1+and+Admin+2+must+have+different+emails")
+        # Check college code/email uniqueness
+        if mdb.colleges.find_one({"$or": [
+            {"code":  f["code"].strip().upper()},
+            {"email": f["college_email"].strip().lower()}
+        ]}):
+            return redirect(url_for("index") + "?reg_error=College+code+or+email+already+registered")
         try:
+            admins = [
+                {
+                    "name":  f["admin1_name"].strip(),
+                    "email": f["admin1_email"].strip().lower(),
+                    "pwd":   f["admin1_pwd"],
+                    "phone": f.get("admin1_phone","").strip(),
+                    "role":  "primary"
+                },
+                {
+                    "name":  f["admin2_name"].strip(),
+                    "email": f["admin2_email"].strip().lower(),
+                    "pwd":   f["admin2_pwd"],
+                    "phone": f.get("admin2_phone","").strip(),
+                    "role":  "secondary"
+                }
+            ]
             mdb.colleges.insert_one({
                 "name":       f["name"].strip(),
                 "code":       f["code"].strip().upper(),
-                "email":      f["email"].strip().lower(),
-                "pwd":        f["pwd"],
-                "phone":      f.get("phone","").strip(),
+                "email":      f["college_email"].strip().lower(),
+                "pwd":        f["admin1_pwd"],   # primary admin pwd used for college login
+                "phone":      f.get("admin1_phone","").strip(),
                 "location":   f.get("location","").strip(),
                 "university": f.get("university","").strip(),
+                "admins":     admins,
                 "active":     True,
                 "created":    datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             })
-            return render_template("college_register.html", success=True)
+            return redirect(url_for("index") + f"?reg_success=College+registered+successfully")
         except DuplicateKeyError:
-            return render_template("college_register.html", error="Email or code already registered.")
-    return render_template("college_register.html")
+            return redirect(url_for("index") + "?reg_error=Email+or+code+already+registered")
+    return redirect(url_for("index"))
 
 # ── Super Admin routes ────────────────────────────────────────────────────────
 @app.route("/superadmin/login", methods=["GET","POST"])
@@ -305,22 +343,34 @@ def login():
 
         # ── College admin login ───────────────────────────────────────────────
         if role == "admin":
-            col = mdb.colleges.find_one({"email": email})
+            # Find college by email (college email) OR admin email
+            col = mdb.colleges.find_one({"$or": [
+                {"email": email},
+                {"admins.email": email}
+            ]})
             if not col:
-                return render_template("login.html", error="College not found.")
+                return redirect(url_for("index") + "?error=College+not+found.+Register+your+college+first.")
             if not col.get("active", True):
-                return render_template("login.html", error="This college portal has been deactivated.")
-            if col["pwd"] != pwd:
-                return render_template("login.html", error="Wrong password.")
+                return redirect(url_for("index") + "?error=This+college+portal+has+been+deactivated.")
+            # Verify password — check against matching admin or college pwd
+            matched_admin = None
+            for adm in col.get("admins", []):
+                if adm["email"] == email and adm["pwd"] == pwd:
+                    matched_admin = adm
+                    break
+            # Also allow college email + primary pwd
+            if not matched_admin and email == col["email"] and col["pwd"] == pwd:
+                matched_admin = {"name": col["name"], "email": email, "role": "primary"}
+            if not matched_admin:
+                return redirect(url_for("index") + "?error=Wrong+password.")
             session.update({
                 "uid": str(col["_id"]), "role": "admin",
-                "name": col["name"], "email": email,
+                "name": matched_admin["name"], "email": email,
                 "college_id": str(col["_id"]), "college_name": col["name"]
             })
             return redirect(url_for("admin_dash"))
 
         # ── Student / Company login (scoped to college) ───────────────────────
-        # Find the college first from the email domain or let user pick
         col_id = request.form.get("college_id","").strip()
         query  = {"email": email}
         if col_id:
@@ -329,13 +379,13 @@ def login():
         db_col = mdb.students if role == "student" else mdb.companies
         row    = db_col.find_one(query)
         if not row:
-            return render_template("login.html", error="Account not found.")
+            return redirect(url_for("index") + "?error=Account+not+found.")
         if row["pwd"] != pwd:
-            return render_template("login.html", error="Wrong password.")
+            return redirect(url_for("index") + "?error=Wrong+password.")
         cid  = row.get("college_id","")
         col  = mdb.colleges.find_one({"_id": oid(cid)}) if cid else None
         if col and not col.get("active", True):
-            return render_template("login.html", error="Your college portal has been deactivated.")
+            return redirect(url_for("index") + "?error=Your+college+portal+has+been+deactivated.")
         session.update({
             "uid": str(row["_id"]), "role": role,
             "name": row["name"], "email": email,
@@ -343,7 +393,7 @@ def login():
             "college_name": col["name"] if col else ""
         })
         return redirect(url_for("student_dash" if role == "student" else "company_dash"))
-    return render_template("login.html")
+    return redirect(url_for("index"))
 
 @app.route("/logout")
 def logout():

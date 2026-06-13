@@ -1,359 +1,421 @@
 {% extends "base.html" %}
 {% block head %}
 <style>
-  body { background: #eef0fb !important; }
+body { background: #f0f2ff !important; }
+.page { padding: 0 !important; max-width: 100% !important; }
 
-  /* Pull the hero out of the .page padding constraints */
-  .page { padding: 0 !important; max-width: 100% !important; }
+/* ── Layout ── */
+.portal-wrap {
+  display: grid;
+  grid-template-columns: 1fr 480px;
+  min-height: calc(100vh - 70px);
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 48px 56px;
+  gap: 56px;
+  align-items: center;
+  box-sizing: border-box;
+}
 
-  /* ── Hero ── */
-  .hero {
-    display: grid;
-    grid-template-columns: 1fr 1.1fr 420px;
-    gap: 48px;
-    align-items: center;
-    min-height: calc(100vh - 70px);
-    padding: 48px 64px;
-    max-width: 1500px;
-    margin: 0 auto;
-    box-sizing: border-box;
-  }
+/* ── LEFT ── */
+.portal-left h1 {
+  font-size: 3rem; font-weight: 900; line-height: 1.1;
+  color: #111827; letter-spacing: -1px; margin-bottom: 18px;
+}
+.portal-left h1 .hl {
+  background: linear-gradient(135deg,#4f46e5,#7c3aed);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.portal-left p {
+  color: #6b7280; font-size: 1rem; line-height: 1.8;
+  max-width: 440px; margin-bottom: 36px;
+}
+.portal-stats {
+  display: flex; gap: 36px;
+  padding-top: 28px; border-top: 1px solid #d0d5e8; margin-bottom: 40px;
+}
+.portal-stats .sn { font-size: 1.9rem; font-weight: 900; color: #111827; line-height: 1; }
+.portal-stats .sn.acc { color: #4f46e5; }
+.portal-stats .sl { font-size: 0.78rem; color: #6b7280; font-weight: 500; margin-top: 4px; }
 
-  /* LEFT */
-  .hero-left h1 {
-    font-size: 3.2rem;
-    font-weight: 900;
-    line-height: 1.12;
-    color: #111827;
-    margin-bottom: 20px;
-    letter-spacing: -1px;
-  }
-  .hero-left h1 .gradient {
-    background: linear-gradient(135deg, #4f46e5, #7c3aed);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-  .hero-left p {
-    color: #6b7280;
-    font-size: 1rem;
-    line-height: 1.8;
-    max-width: 400px;
-    margin-bottom: 36px;
-  }
-  .hero-btns {
-    display: flex;
-    gap: 14px;
-    flex-wrap: wrap;
-    margin-bottom: 48px;
-  }
-  .hero-btns .btn-primary-hero {
-    display: inline-flex; align-items: center; gap: 8px;
-    background: #4f46e5; color: #fff;
-    padding: 14px 28px; border-radius: 10px;
-    font-size: 0.95rem; font-weight: 600;
-    text-decoration: none; border: none; cursor: pointer;
-    transition: background 0.15s, box-shadow 0.15s;
-  }
-  .hero-btns .btn-primary-hero:hover {
-    background: #4338ca;
-    box-shadow: 0 4px 16px rgba(79,70,229,0.35);
-  }
-  .hero-btns .btn-ghost-hero {
-    display: inline-flex; align-items: center; gap: 8px;
-    background: #fff; color: #374151;
-    padding: 14px 28px; border-radius: 10px;
-    font-size: 0.95rem; font-weight: 600;
-    text-decoration: none;
-    border: 1.5px solid #e2e5f0;
-    transition: border-color 0.15s, background 0.15s;
-  }
-  .hero-btns .btn-ghost-hero:hover { border-color: #4f46e5; background: #eef2ff; }
+/* Colleges strip */
+.colleges-strip { display: flex; gap: 12px; flex-wrap: wrap; }
+.college-pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: #fff; border: 1px solid #e2e5f0;
+  border-radius: 40px; padding: 7px 14px;
+  font-size: 0.78rem; font-weight: 600; color: #374151;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+.college-pill .cp-dot {
+  width: 26px; height: 26px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.72rem; font-weight: 800; color: #fff; flex-shrink: 0;
+}
 
-  .hero-stats {
-    display: flex;
-    gap: 40px;
-    padding-top: 32px;
-    border-top: 1px solid #e2e5f0;
-  }
-  .hero-stats .snum {
-    font-size: 2rem;
-    font-weight: 900;
-    color: #111827;
-    line-height: 1;
-  }
-  .hero-stats .snum.accent { color: #4f46e5; }
-  .hero-stats .slbl {
-    font-size: 0.82rem;
-    color: #6b7280;
-    font-weight: 500;
-    margin-top: 5px;
-  }
+/* ── RIGHT — card ── */
+.portal-card {
+  background: #fff;
+  border: 1px solid #e2e5f0;
+  border-radius: 22px;
+  box-shadow: 0 10px 48px rgba(79,70,229,0.12), 0 2px 8px rgba(0,0,0,0.05);
+  overflow: hidden;
+}
+.portal-card .tab-bar {
+  display: grid; grid-template-columns: 1fr 1fr;
+  border-bottom: 1px solid #e2e5f0;
+}
+.portal-card .tab-btn {
+  padding: 16px 0; text-align: center;
+  font-size: 0.875rem; font-weight: 700;
+  cursor: pointer; border: none; background: #f8f9ff;
+  color: #6b7280; font-family: 'Inter',sans-serif;
+  transition: all 0.15s;
+}
+.portal-card .tab-btn.on {
+  background: #fff; color: #4f46e5;
+  border-bottom: 2px solid #4f46e5;
+}
+.portal-card .tab-body { padding: 28px 28px 24px; }
+.portal-card .tab-pane { display: none; }
+.portal-card .tab-pane.on { display: block; }
 
-  /* CENTER */
-  .hero-img {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .hero-img img {
-    width: 100%;
-    max-width: 520px;
-    height: auto;
-    object-fit: contain;
-  }
+/* Form elements */
+.fg { margin-bottom: 14px; }
+.fg label { display: block; font-size: 0.78rem; font-weight: 600; color: #374151; margin-bottom: 5px; }
+.fg label .req { color: #dc2626; }
+.fc {
+  width: 100%; padding: 10px 13px;
+  border: 1.5px solid #d0d5e8; border-radius: 9px;
+  font-size: 0.875rem; color: #111827; background: #fff;
+  outline: none; font-family: 'Inter',sans-serif;
+  transition: border-color .15s, box-shadow .15s; box-sizing: border-box;
+}
+.fc:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79,70,229,.1); }
+.fc::placeholder { color: #9ca3af; }
+.g2f { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.btn-main {
+  width: 100%; padding: 12px; background: #4f46e5; color: #fff;
+  border: none; border-radius: 10px; font-size: 0.9rem; font-weight: 700;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+  font-family: 'Inter',sans-serif; transition: background .15s, box-shadow .15s; margin-top: 4px;
+}
+.btn-main:hover { background: #4338ca; box-shadow: 0 4px 14px rgba(79,70,229,.3); }
 
-  /* RIGHT — login card */
-  .login-card {
-    background: #fff;
-    border: 1px solid #e2e5f0;
-    border-radius: 20px;
-    padding: 36px 32px;
-    box-shadow: 0 8px 40px rgba(79,70,229,0.10), 0 2px 8px rgba(0,0,0,0.05);
-  }
-  .login-card .lc-icon {
-    width: 56px; height: 56px;
-    border-radius: 16px;
-    background: linear-gradient(135deg, #4f46e5, #7c3aed);
-    display: flex; align-items: center; justify-content: center;
-    margin: 0 auto 14px;
-    font-size: 1.4rem; color: #fff;
-  }
-  .login-card h2 {
-    font-size: 1.35rem; font-weight: 800;
-    color: #111827; text-align: center; margin-bottom: 4px;
-  }
-  .login-card .lc-sub {
-    font-size: 0.85rem; color: #6b7280;
-    text-align: center; margin-bottom: 28px;
-  }
-  .login-card .fg { margin-bottom: 16px; }
-  .login-card .fg label {
-    display: block; font-size: 0.8rem; font-weight: 600;
-    color: #374151; margin-bottom: 6px;
-  }
-  .login-card .fc {
-    width: 100%; padding: 11px 14px;
-    border: 1.5px solid #d0d5e8; border-radius: 9px;
-    font-size: 0.875rem; color: #111827;
-    background: #fff; outline: none;
-    font-family: 'Inter', sans-serif;
-    transition: border-color 0.15s, box-shadow 0.15s;
-    box-sizing: border-box;
-  }
-  .login-card .fc:focus {
-    border-color: #4f46e5;
-    box-shadow: 0 0 0 3px rgba(79,70,229,0.12);
-  }
-  .login-card .fc::placeholder { color: #9ca3af; }
-  .login-card .btn-signin {
-    width: 100%; padding: 13px;
-    background: #4f46e5; color: #fff;
-    border: none; border-radius: 10px;
-    font-size: 0.95rem; font-weight: 600;
-    cursor: pointer; margin-top: 6px;
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-    font-family: 'Inter', sans-serif;
-    transition: background 0.15s, box-shadow 0.15s;
-  }
-  .login-card .btn-signin:hover {
-    background: #4338ca;
-    box-shadow: 0 4px 14px rgba(79,70,229,0.3);
-  }
-  .login-card .lc-links {
-    text-align: center; font-size: 0.82rem;
-    color: #6b7280; margin-top: 18px;
-  }
-  .login-card .lc-links a {
-    color: #4f46e5; font-weight: 600; text-decoration: none;
-  }
-  .login-card .demo-box {
-    margin-top: 16px;
-    background: #f0f2ff;
-    border-radius: 9px;
-    padding: 12px 14px;
-  }
-  .login-card .demo-box .dlbl {
-    font-size: 0.7rem; font-weight: 700;
-    letter-spacing: 0.8px; text-transform: uppercase;
-    color: #9ca3af; margin-bottom: 5px;
-  }
-  .login-card .demo-box p {
-    font-size: 0.82rem; color: #6b7280;
-  }
+/* Section divider inside form */
+.form-sec {
+  font-size: 0.68rem; font-weight: 700; letter-spacing: 1px;
+  text-transform: uppercase; color: #9ca3af;
+  padding: 10px 0 8px; border-top: 1px solid #f3f4f6; margin: 10px 0 14px;
+}
+.form-sec:first-child { border-top: none; padding-top: 0; }
 
-  /* Features strip */
-  .features {
-    padding: 60px 64px;
-    max-width: 1500px;
-    margin: 0 auto;
-    border-top: 1px solid #e2e5f0;
-  }
-  .features .feat-label {
-    text-align: center;
-    font-size: 0.72rem; font-weight: 700;
-    letter-spacing: 1.5px; text-transform: uppercase;
-    color: #9ca3af; margin-bottom: 36px;
-  }
-  .feat-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 24px;
-  }
-  .feat-card {
-    text-align: center;
-    padding: 28px 20px;
-    background: #fff;
-    border-radius: 16px;
-    border: 1px solid #e2e5f0;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-  }
-  .feat-card .ficon {
-    width: 52px; height: 52px; border-radius: 14px;
-    display: flex; align-items: center; justify-content: center;
-    margin: 0 auto 16px; font-size: 1.3rem;
-  }
-  .feat-card h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 8px; }
-  .feat-card p  { font-size: 0.84rem; color: #6b7280; line-height: 1.65; }
+/* Alert */
+.al { padding: 10px 14px; border-radius: 9px; font-size: 0.82rem; margin-bottom: 14px; display:flex; gap:8px; }
+.al-err { background: #fee2e2; border: 1px solid #fca5a5; color: #991b1b; }
+.al-ok  { background: #d1fae5; border: 1px solid #6ee7b7; color: #065f46; }
 
-  /* Responsive */
-  @media (max-width: 1200px) {
-    .hero { grid-template-columns: 1fr 420px; gap: 40px; padding: 40px 40px; }
-    .hero-img { display: none; }
-    .feat-grid { grid-template-columns: repeat(2,1fr); }
-  }
-  @media (max-width: 720px) {
-    .hero { grid-template-columns: 1fr; padding: 32px 24px; }
-    .feat-grid { grid-template-columns: 1fr; }
-    .features { padding: 40px 24px; }
-  }
+/* Super admin link */
+.sa-link { text-align:center; margin-top:14px; font-size:0.78rem; color:#9ca3af; }
+.sa-link a { color:#6b7280; font-weight:600; text-decoration:none; }
+.sa-link a:hover { color:#4f46e5; }
+
+/* Features strip */
+.feat-strip {
+  max-width: 1400px; margin: 0 auto;
+  padding: 40px 56px 56px;
+  border-top: 1px solid #e2e5f0;
+}
+.feat-strip h3 { font-size: 0.72rem; font-weight:700; letter-spacing:1.4px; text-transform:uppercase; color:#9ca3af; text-align:center; margin-bottom:28px; }
+.feat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:18px; }
+.feat-card { background:#fff; border:1px solid #e2e5f0; border-radius:14px; padding:22px 18px; text-align:center; box-shadow:0 1px 4px rgba(0,0,0,.04); }
+.feat-card .fi { width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:1.2rem; }
+.feat-card h4 { font-size:0.875rem;font-weight:700;margin-bottom:6px; }
+.feat-card p  { font-size:0.8rem;color:#6b7280;line-height:1.6; }
+
+@media(max-width:1100px) { .portal-wrap{grid-template-columns:1fr;max-width:520px;} .portal-left{display:none;} }
+@media(max-width:600px)  { .portal-wrap{padding:24px 16px;} .feat-grid{grid-template-columns:1fr 1fr;} }
 </style>
 {% endblock %}
 
 {% block nav %}
-  <a href="/login">Login</a>
+  <a href="/superadmin/login" style="font-size:0.8rem;color:var(--muted);text-decoration:none;padding:6px 12px;border-radius:7px;" title="Super Admin">🌐 Platform Admin</a>
 {% endblock %}
 
 {% block content %}
 
-<!-- ── Hero ── -->
-<div class="hero">
+<div class="portal-wrap">
 
-  <!-- LEFT -->
-  <div class="hero-left">
-    <h1>
-      Campus Hiring,<br>
-      <span class="gradient">Reimagined with AI.</span>
-    </h1>
-    <p>SmartHire AI connects students with top companies through intelligent matching, automated pipelines, and real-time analytics — all in one platform.</p>
+  <!-- ── LEFT ── -->
+  <div class="portal-left">
+    <h1>Campus Hiring,<br><span class="hl">Reimagined with AI.</span></h1>
+    <p>SmartHire AI gives each college its own isolated placement portal — connecting students with top companies through intelligent matching, automated pipelines, and real-time analytics.</p>
 
-    <div class="hero-btns">
-      <a href="/login" class="btn-primary-hero">
-        <i class="fa-solid fa-arrow-right-to-bracket"></i> Sign In
-      </a>
+    <div class="portal-stats">
+      <div><div class="sn">{{ stats.students }}+</div><div class="sl">Students</div></div>
+      <div><div class="sn">{{ stats.companies }}+</div><div class="sl">Companies</div></div>
+      <div><div class="sn">{{ stats.drives }}</div><div class="sl">Active Drives</div></div>
+      <div><div class="sn acc">{{ stats.placed }}</div><div class="sl">Students Placed</div></div>
     </div>
 
-    <div class="hero-stats">
-      <div>
-        <div class="snum">{{ stats.students }}+</div>
-        <div class="slbl">Students</div>
+    {% if colleges %}
+    <div style="margin-bottom:12px;font-size:0.78rem;font-weight:700;color:#6b7280;letter-spacing:0.5px;text-transform:uppercase;">Colleges on SmartHire</div>
+    <div class="colleges-strip">
+      {% set lc=['#4f46e5','#059669','#d97706','#dc2626','#0891b2','#7c3aed','#be185d','#065f46'] %}
+      {% for c in colleges %}
+      <div class="college-pill">
+        <div class="cp-dot" style="background:{{ lc[loop.index0 % lc|length] }};">{{ c['name'][0].upper() }}</div>
+        {{ c['name'] }}
       </div>
-      <div>
-        <div class="snum">{{ stats.companies }}+</div>
-        <div class="slbl">Companies</div>
-      </div>
-      <div>
-        <div class="snum">{{ stats.drives }}</div>
-        <div class="slbl">Active Drives</div>
-      </div>
-      <div>
-        <div class="snum accent">{{ stats.placed }}</div>
-        <div class="slbl">Students Placed</div>
-      </div>
+      {% endfor %}
     </div>
+    {% endif %}
   </div>
 
-  <!-- CENTER illustration -->
-  <div class="hero-img">
-    <img src="{{ url_for('static', filename='hero.png') }}"
-         alt="SmartHire AI campus hiring illustration">
-  </div>
+  <!-- ── RIGHT — card ── -->
+  <div class="portal-card">
 
-  <!-- RIGHT login card -->
-  <div class="login-card">
-    <div style="text-align:center;">
-      <div class="lc-icon"><i class="fa-solid fa-bolt"></i></div>
-      <h2>Welcome back</h2>
-      <p class="lc-sub">Sign in to your SmartHire account</p>
-    </div>
-
-    <form action="/login" method="POST">
-      <div class="fg">
-        <label>Email Address</label>
-        <input type="email" name="email" class="fc" placeholder="you@example.com" required>
-      </div>
-      <div class="fg">
-        <label>Password</label>
-        <input type="password" name="pwd" class="fc" placeholder="••••••••" required>
-      </div>
-      <div class="fg">
-        <label>Login As</label>
-        <select name="role" class="fc">
-          <option value="student">🎓 Student</option>
-          <option value="company">🏢 Company / Recruiter</option>
-          <option value="admin">🛡️ Admin</option>
-        </select>
-      </div>
-      <button type="submit" class="btn-signin">
-        <i class="fa-solid fa-arrow-right-to-bracket"></i> Sign In
+    <!-- Tab bar -->
+    <div class="tab-bar">
+      <button class="tab-btn on" id="tab-signin" onclick="switchTab('signin')">
+        <i class="fa-solid fa-arrow-right-to-bracket" style="margin-right:6px;"></i>Sign In
       </button>
-    </form>
-
-    <p class="lc-links">
-      Contact admin to register your account.
-    </p>
-
-    <div class="demo-box">
-      <p class="dlbl">Demo Admin</p>
-      <p>admin@smarthire.ai &nbsp;/&nbsp; admin123</p>
+      <button class="tab-btn" id="tab-register" onclick="switchTab('register')">
+        <i class="fa-solid fa-building-columns" style="margin-right:6px;"></i>Register College
+      </button>
     </div>
-  </div>
 
-</div>
+    <div class="tab-body">
+
+      <!-- ══ SIGN IN ══ -->
+      <div class="tab-pane on" id="pane-signin">
+        <div style="text-align:center;margin-bottom:20px;">
+          <div style="width:50px;height:50px;border-radius:14px;background:linear-gradient(135deg,#4f46e5,#7c3aed);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-size:1.3rem;color:#fff;">
+            <i class="fa-solid fa-bolt"></i>
+          </div>
+          <div style="font-size:1.1rem;font-weight:800;color:#111827;">Welcome back</div>
+          <div style="font-size:0.82rem;color:#6b7280;margin-top:3px;">Sign in to your college's SmartHire portal</div>
+        </div>
+
+        {% if error %}
+        <div class="al al-err"><i class="fa-solid fa-circle-exclamation"></i> {{ error }}</div>
+        {% endif %}
+
+        <form action="/login" method="POST" id="signin-form">
+          <div class="fg">
+            <label>College Email <span class="req">*</span></label>
+            <input type="email" name="email" class="fc" placeholder="admin@college.edu.in" required autocomplete="email">
+          </div>
+          <div class="fg">
+            <label>Password <span class="req">*</span></label>
+            <div style="position:relative;">
+              <input type="password" name="pwd" id="signin-pwd" class="fc" placeholder="••••••••" required style="padding-right:40px;">
+              <button type="button" onclick="togglePwd('signin-pwd',this)" style="position:absolute;right:11px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9ca3af;font-size:0.85rem;padding:0;">
+                <i class="fa-solid fa-eye"></i>
+              </button>
+            </div>
+          </div>
+          <div class="fg">
+            <label>Login As <span class="req">*</span></label>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+              {% for rv, rl, ri in [('admin','College Admin','fa-user-shield'),('student','Student','fa-user-graduate'),('company','Company','fa-building')] %}
+              <label style="cursor:pointer;display:block;">
+                <input type="radio" name="role" value="{{ rv }}" style="display:none;"
+                       onchange="highlightRole('{{ rv }}')" {% if loop.first %}checked{% endif %}>
+                <div class="role-pill" id="rp-{{ rv }}" style="text-align:center;padding:8px 4px;border-radius:9px;border:1.5px solid {% if loop.first %}#4f46e5{% else %}#e2e5f0{% endif %};background:{% if loop.first %}#eef2ff{% else %}#f8f9ff{% endif %};font-size:0.72rem;font-weight:600;color:{% if loop.first %}#4f46e5{% else %}#6b7280{% endif %};">
+                  <i class="fa-solid {{ ri }}" style="display:block;font-size:1rem;margin-bottom:3px;"></i>
+                  {{ rl }}
+                </div>
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+          <button type="submit" class="btn-main">
+            <i class="fa-solid fa-arrow-right-to-bracket"></i> Sign In
+          </button>
+        </form>
+
+        <div style="text-align:center;margin-top:14px;font-size:0.8rem;color:#9ca3af;">
+          Don't have a college account?
+          <a href="#" onclick="switchTab('register')" style="color:#4f46e5;font-weight:600;text-decoration:none;">Register your college →</a>
+        </div>
+
+        <!-- Demo credentials -->
+        <div style="margin-top:16px;background:#f8f9ff;border:1px solid #e2e5f0;border-radius:10px;padding:12px 14px;">
+          <div style="font-size:0.65rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#9ca3af;margin-bottom:8px;">Demo Colleges</div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            {% for dc in demo_colleges %}
+            <div style="display:flex;align-items:center;justify-content:space-between;font-size:0.75rem;">
+              <span style="font-weight:600;color:#374151;">🏫 {{ dc.name }}</span>
+              <button onclick="fillCreds('{{ dc.email }}','{{ dc.pwd }}')"
+                style="background:#eef2ff;color:#4f46e5;border:1px solid #c7d2fe;border-radius:6px;padding:2px 9px;font-size:0.7rem;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;">
+                Fill
+              </button>
+            </div>
+            <div style="font-size:0.7rem;color:#9ca3af;margin-top:-2px;">{{ dc.email }} / {{ dc.pwd }}</div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ REGISTER ══ -->
+      <div class="tab-pane" id="pane-register">
+        <div style="text-align:center;margin-bottom:18px;">
+          <div style="font-size:1.1rem;font-weight:800;color:#111827;">Register Your College</div>
+          <div style="font-size:0.82rem;color:#6b7280;margin-top:3px;">Create your campus placement portal in minutes</div>
+        </div>
+
+        {% if reg_error %}
+        <div class="al al-err"><i class="fa-solid fa-circle-exclamation"></i> {{ reg_error }}</div>
+        {% endif %}
+        {% if reg_success %}
+        <div class="al al-ok"><i class="fa-solid fa-circle-check"></i> {{ reg_success }} — <a href="#" onclick="switchTab('signin')" style="color:#059669;font-weight:700;">Sign in now →</a></div>
+        {% endif %}
+
+        <form action="/college/register" method="POST">
+
+          <div class="form-sec">College Details</div>
+          <div class="g2f">
+            <div class="fg">
+              <label>College Name <span class="req">*</span></label>
+              <input type="text" name="name" class="fc" placeholder="e.g. Woxsen University" required>
+            </div>
+            <div class="fg">
+              <label>College Code <span class="req">*</span></label>
+              <input type="text" name="code" class="fc" placeholder="e.g. WU2026" required
+                     oninput="this.value=this.value.toUpperCase()">
+            </div>
+          </div>
+          <div class="g2f">
+            <div class="fg">
+              <label>Official Email <span class="req">*</span></label>
+              <input type="email" name="college_email" class="fc" placeholder="info@college.edu" required>
+            </div>
+            <div class="fg">
+              <label>Location</label>
+              <input type="text" name="location" class="fc" placeholder="City, State">
+            </div>
+          </div>
+
+          <div class="form-sec">Admin 1 (Primary)</div>
+          <div class="g2f">
+            <div class="fg">
+              <label>Full Name <span class="req">*</span></label>
+              <input type="text" name="admin1_name" class="fc" placeholder="Dr. Jane Smith" required>
+            </div>
+            <div class="fg">
+              <label>Email <span class="req">*</span></label>
+              <input type="email" name="admin1_email" class="fc" placeholder="jane@college.edu" required>
+            </div>
+          </div>
+          <div class="g2f">
+            <div class="fg">
+              <label>Password <span class="req">*</span></label>
+              <input type="password" name="admin1_pwd" class="fc" placeholder="Min 6 chars" required minlength="6">
+            </div>
+            <div class="fg">
+              <label>Phone</label>
+              <input type="text" name="admin1_phone" class="fc" placeholder="9876543210">
+            </div>
+          </div>
+
+          <div class="form-sec">Admin 2 (Secondary)</div>
+          <div class="g2f">
+            <div class="fg">
+              <label>Full Name <span class="req">*</span></label>
+              <input type="text" name="admin2_name" class="fc" placeholder="Mr. John Doe" required>
+            </div>
+            <div class="fg">
+              <label>Email <span class="req">*</span></label>
+              <input type="email" name="admin2_email" class="fc" placeholder="john@college.edu" required>
+            </div>
+          </div>
+          <div class="g2f">
+            <div class="fg">
+              <label>Password <span class="req">*</span></label>
+              <input type="password" name="admin2_pwd" class="fc" placeholder="Min 6 chars" required minlength="6">
+            </div>
+            <div class="fg">
+              <label>Phone</label>
+              <input type="text" name="admin2_phone" class="fc" placeholder="9876543211">
+            </div>
+          </div>
+
+          <button type="submit" class="btn-main" style="margin-top:8px;">
+            <i class="fa-solid fa-building-columns"></i> Create College Portal
+          </button>
+        </form>
+
+        <div style="text-align:center;margin-top:12px;font-size:0.8rem;color:#9ca3af;">
+          Already registered? <a href="#" onclick="switchTab('signin')" style="color:#4f46e5;font-weight:600;text-decoration:none;">Sign in →</a>
+        </div>
+      </div>
+
+    </div><!-- tab-body -->
+
+    <div class="sa-link">
+      <a href="/superadmin/login"><i class="fa-solid fa-shield-halved"></i> Platform Super Admin</a>
+    </div>
+    <div style="height:14px;"></div>
+  </div><!-- portal-card -->
+
+</div><!-- portal-wrap -->
 
 <!-- ── Features ── -->
-<div class="features">
-  <p class="feat-label">What makes SmartHire different</p>
+<div class="feat-strip">
+  <h3>What makes SmartHire different</h3>
   <div class="feat-grid">
     <div class="feat-card">
-      <div class="ficon" style="background:#eef2ff;color:#4f46e5;">
-        <i class="fa-solid fa-brain"></i>
-      </div>
+      <div class="fi" style="background:#eef2ff;color:#4f46e5;"><i class="fa-solid fa-brain"></i></div>
       <h4>AI Match Score</h4>
-      <p>Instantly scores student-job fit using skills, CGPA, and degree.</p>
+      <p>Instantly scores student–job fit using skills, CGPA, degree, and graduation year.</p>
     </div>
     <div class="feat-card">
-      <div class="ficon" style="background:#d1fae5;color:#059669;">
-        <i class="fa-solid fa-file-lines"></i>
-      </div>
-      <h4>Skill Extractor</h4>
-      <p>Paste your resume — AI auto-detects your skills instantly.</p>
+      <div class="fi" style="background:#d1fae5;color:#059669;"><i class="fa-solid fa-building-columns"></i></div>
+      <h4>Multi-College</h4>
+      <p>Each college gets a fully isolated portal. Data never mixes between institutions.</p>
     </div>
     <div class="feat-card">
-      <div class="ficon" style="background:#fef3c7;color:#d97706;">
-        <i class="fa-solid fa-comments"></i>
-      </div>
-      <h4>Interview Prep</h4>
-      <p>AI generates role-specific technical, HR, and aptitude questions.</p>
+      <div class="fi" style="background:#fef3c7;color:#d97706;"><i class="fa-solid fa-comments"></i></div>
+      <h4>Gemini AI Chatbot</h4>
+      <p>Context-aware assistant powered by Gemini 2.5 Flash with Hindi voice support.</p>
     </div>
     <div class="feat-card">
-      <div class="ficon" style="background:#ede9fe;color:#7c3aed;">
-        <i class="fa-solid fa-chart-line"></i>
-      </div>
+      <div class="fi" style="background:#ede9fe;color:#7c3aed;"><i class="fa-solid fa-chart-line"></i></div>
       <h4>Live Analytics</h4>
-      <p>Real-time placement stats, branch-wise reports, and hiring trends.</p>
+      <p>Real-time placement stats, branch-wise reports, and company hiring trends.</p>
     </div>
   </div>
 </div>
 
+<script>
+function switchTab(t) {
+  ['signin','register'].forEach(function(x) {
+    document.getElementById('tab-'+x).classList.toggle('on', x===t);
+    document.getElementById('pane-'+x).classList.toggle('on', x===t);
+  });
+}
+function highlightRole(r) {
+  ['admin','student','company'].forEach(function(x) {
+    var el = document.getElementById('rp-'+x);
+    if (x===r) { el.style.borderColor='#4f46e5'; el.style.background='#eef2ff'; el.style.color='#4f46e5'; }
+    else        { el.style.borderColor='#e2e5f0'; el.style.background='#f8f9ff'; el.style.color='#6b7280'; }
+  });
+}
+function fillCreds(email, pwd) {
+  document.querySelector('input[name="email"]').value = email;
+  document.querySelector('input[name="pwd"]').value   = pwd;
+  // set role to admin
+  var adminRadio = document.querySelector('input[name="role"][value="admin"]');
+  if (adminRadio) { adminRadio.checked = true; highlightRole('admin'); }
+}
+function togglePwd(id, btn) {
+  var inp = document.getElementById(id);
+  var showing = inp.type === 'text';
+  inp.type = showing ? 'password' : 'text';
+  btn.innerHTML = showing ? '<i class="fa-solid fa-eye"></i>' : '<i class="fa-solid fa-eye-slash"></i>';
+}
+{% if reg_error or reg_success %}switchTab('register');{% endif %}
+</script>
 {% endblock %}
